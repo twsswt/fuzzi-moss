@@ -49,15 +49,45 @@ class mutate(object):
                 # Initialise the mutator function into something harmless.
                 mutator_function = lambda x: x
 
-                print type(self.mutation_instructions)
-
                 # Get an appropriate mutator function
                 if type(self.mutation_instructions) == FunctionType or type(self.mutation_instructions) == LambdaType:
                     mutator_function = self.mutation_instructions
                 elif isinstance(self.mutation_instructions, list):
                     # We've been given a list of mutator functions. Are they tuples of functions and probabilities? To be done here!
                     # For now, we just assume that we're given a list of mutator functions of equal probability. 
-                    mutator_function = random.choice(self.mutation_instructions)
+                    if isinstance(self.mutation_instructions[0], tuple):
+                        # We have a series of tuples of mutator functions and the probabilities that they come up!
+                        # We'll do the following.
+                        '''
+                            Sift each tuple out into the function and the probability. Keep a list of the probabilities and a list of the functions.
+                            Pick a random float between 0 and sum(probabilities), f.
+                            Starting from the first probability p0, pick probability pn such that pn-1 is the last probability s.t. pn-1<n. If p0>n, choose p0.
+                        '''
+
+                        # Sift through the probabilities
+                        functions = []
+                        probabilities = []
+                        for current_tuple in self.mutation_instructions:
+                            functionIndex = 0 if isinstance(current_tuple[0], FunctionType) or isinstance(current_tuple[0], LambdaType) else 1
+                            probIndex = 1 - functionIndex
+                            functions.append(current_tuple[functionIndex])
+                            probabilities.append(current_tuple[probIndex])
+
+                        # Pick a random float.
+                        f = random.random() * sum(probabilities)
+
+                        # Find the probability chosen
+                        choice = 0
+                        while choice < len(probabilities):
+                            if sum(probabilities[:choice+1]) >= f:
+                                break
+                            else:
+                                choice += 1
+
+                        # Decide on the choice given by the above algorithm.
+                        mutator_function = functions[choice]
+                    else:
+                        mutator_function = random.choice(self.mutation_instructions)
                 else:
                     print "None of the above!"
 
@@ -90,12 +120,18 @@ def mutate_test(lines):
     if len(lines) > 1 :#and random.choice([True, False]):
         lines.remove(random.choice(lines))
     return lines
-@mutate([mutate_test])
+
+def mutate_test_two(lines):
+    return lines
+
+@mutate([(mutate_test, 0.2), (0.8, mutate_test_two)])
 def mutated_function():
     print 1
     print 2
     print 3
     print 4
     print 5
+
 if __name__ == "__main__":
-    mutated_function()
+    for i in range(10):
+        mutated_function()
