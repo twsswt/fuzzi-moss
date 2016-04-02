@@ -60,6 +60,7 @@ class mutate(object):
                         # We'll do the following.
                         '''
                             Sift each tuple out into the function and the probability. Keep a list of the probabilities and a list of the functions.
+                            If the sum of the probabilities are <1, assume we're dealing with probabilities rather than parts and that the identity has been omitted. Add the identity with the remaining probability.
                             Pick a random float between 0 and sum(probabilities), f.
                             Starting from the first probability p0, pick probability pn such that pn-1 is the last probability s.t. pn-1<n. If p0>n, choose p0.
                         '''
@@ -72,6 +73,11 @@ class mutate(object):
                             probIndex = 1 - functionIndex
                             functions.append(current_tuple[functionIndex])
                             probabilities.append(current_tuple[probIndex])
+
+                        # Add an identity mutator function if needed, smartly.
+                        if sum(probabilities) < 1:  # If we're dealing with probabilities rather than parts and if the identity has been omitted:
+                            probabilities.append(1-sum(probabilities))
+                            functions.append(lambda x : x)
 
                         # Pick a random float.
                         f = random.random() * sum(probabilities)
@@ -124,7 +130,7 @@ def mutate_test(lines):
 def mutate_test_two(lines):
     return lines
 
-@mutate([(mutate_test, 0.2), (0.8, mutate_test_two)])
+@mutate([(0.5, mutate_test)])
 def mutated_function():
     print 1
     print 2
@@ -135,3 +141,4 @@ def mutated_function():
 if __name__ == "__main__":
     for i in range(10):
         mutated_function()
+        print
