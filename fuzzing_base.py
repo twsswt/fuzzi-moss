@@ -1,4 +1,5 @@
 import environment, random, ast, inspect
+from types import *
 
 class ResourcesExpendedException(Exception):
     pass
@@ -37,13 +38,28 @@ class mutate(object):
 
     cache = {}
 
-    def __init__(self, mutation_type):
-        self.mutation_type = mutation_type
+    def __init__(self, mutation_instructions):
+        self.mutation_instructions = mutation_instructions
 
     def __call__(self, func):
         def wrap(*args, **kwargs):
 
             if environment.resources["mutating"] is True:
+
+                # Initialise the mutator function into something harmless.
+                mutator_function = lambda x: x
+
+                print type(self.mutation_instructions)
+
+                # Get an appropriate mutator function
+                if type(self.mutation_instructions) == FunctionType or type(self.mutation_instructions) == LambdaType:
+                    mutator_function = self.mutation_instructions
+                elif isinstance(self.mutation_instructions, list):
+                    # We've been given a list of mutator functions. Are they tuples of functions and probabilities? To be done here!
+                    # For now, we just assume that we're given a list of mutator functions of equal probability. 
+                    mutator_function = random.choice(self.mutation_instructions)
+                else:
+                    print "None of the above!"
 
                 # Load function source from mutate.cache if available
                 if func.func_name in mutate.cache.keys():
@@ -54,12 +70,12 @@ class mutate(object):
                 # Create function source
                 func_source = ''.join(func_source) + '\n' + func.func_name + '_mod' + '()'
                 # Mutate using the new mutator class
-                mutator = Mutator(self.mutation_type)
+                mutator = Mutator(mutator_function)
                 abstract_syntax_tree = ast.parse(func_source)
                 mutated_func_uncompiled = mutator.visit(abstract_syntax_tree)
                 mutated_func = func
                 mutated_func.func_code = compile(mutated_func_uncompiled, inspect.getsourcefile(func), 'exec')
-                mutate.cache[(func, self.mutation_type)] = mutated_func
+                mutate.cache[(func, mutator_function)] = mutated_func
                 mutated_func(*args, **kwargs)
             else:
                 func(*args, **kwargs)
@@ -68,3 +84,18 @@ class mutate(object):
     @staticmethod
     def reset():
         mutate.cache = {}
+
+
+def mutate_test(lines):
+    if len(lines) > 1 :#and random.choice([True, False]):
+        lines.remove(random.choice(lines))
+    return lines
+@mutate([mutate_test])
+def mutated_function():
+    print 1
+    print 2
+    print 3
+    print 4
+    print 5
+if __name__ == "__main__":
+    mutated_function()
