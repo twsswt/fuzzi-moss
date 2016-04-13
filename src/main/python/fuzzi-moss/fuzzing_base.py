@@ -1,144 +1,184 @@
-import environment, random, ast, inspect
+"""
+@author probablytom, tws
+"""
+
+import random, ast, inspect
 from types import *
+
 
 class ResourcesExpendedException(Exception):
     pass
 
 
-class Mutator(ast.NodeTransformer):
+class FuzzVisitor(ast.NodeTransformer):
 
     mutants_visited = 0
 
-    # The mutation argument is a function that takes a list of lines and returns another list of lines.
-    def __init__(self, mutation=lambda x: x, strip_decorators = True):
+    def __init__(self, mutation_operator=lambda x: x, strip_decorators=True):
+        """
+        :param mutation_operator: a function that takes a list of strings (lines of program code) and returns another list of
+        lines.
+        :param strip_decorators: removing decorators prevents re-mutation if a function decorated with a mutator is
+        called recursively.
+        """
+
         self.strip_decorators = strip_decorators
-        self.mutation = mutation
+        self.mutation = mutation_operator
 
-    #NOTE: This will work differently depending on whether the decorator takes arguments.
     def visit_FunctionDef(self, node):
+        """
+        Applies this visitor's mutation operator to the body of the supplied node.
+        NOTE: This will work differently depending on whether the decorator takes arguments.
+        """
 
-        # Fix the randomisation to the environment
-        random.seed(environment.resources["seed"])
+        # Renaming is necessary so that we don't overwrite Python's object caching.
+        node.name += '_mod'
 
-        # Mutation algorithm!
-        node.name += '_mod'   # so we don't overwrite Python's object caching
-        # Remove decorators if we need to So we don't re-decorate when we run the mutated function, mutating recursively
         if self.strip_decorators:
             node.decorator_list = []
-        # Mutate! self.mutation is a function that takes a list of line objects and returns a list of line objects.
+
         node.body = self.mutation(node.body)
 
-        # Now that we've mutated, increment the necessary counters and parse the rest of the tree we're given
-        Mutator.mutants_visited += 1
-        environment.resources["seed"] += 1
+        # Now that we've mutated, increment the necessary counters and parse the rest of the tree we're given.
+        FuzzVisitor.mutants_visited += 1
         return self.generic_visit(node)
 
 
 class mutate(object):
 
-    cache = {}
+    source_cache = {}
 
-    def __init__(self, mutation_instructions):
-        self.mutation_instructions = mutation_instructions
+    mutation_cache = {}
+
+    def __init__(self, mutation_provider):
+        self.mutation_provider = mutation_provider
 
     def __call__(self, func):
         def wrap(*args, **kwargs):
 
-            if environment.resources["mutating"] is True:
+            mutation_operator = self.mutation_provider
 
-                # Initialise the mutator function into something harmless.
-                mutator_function = lambda x: x
+            func_source_lines = mutate.get_source_lines(func)
 
-                # Get an appropriate mutator function
-                if type(self.mutation_instructions) == FunctionType or type(self.mutation_instructions) == LambdaType:
-                    mutator_function = self.mutation_instructions
-                elif isinstance(self.mutation_instructions, list):
-                    # We've been given a list of mutator functions. Are they tuples of functions and probabilities? To be done here!
-                    # For now, we just assume that we're given a list of mutator functions of equal probability. 
-                    if isinstance(self.mutation_instructions[0], tuple):
-                        # We have a series of tuples of mutator functions and the probabilities that they come up!
-                        # We'll do the following.
-                        '''
-                            Sift each tuple out into the function and the probability. Keep a list of the probabilities and a list of the functions.
-                            If the sum of the probabilities are <1, assume we're dealing with probabilities rather than parts and that the identity has been omitted. Add the identity with the remaining probability.
-                            Pick a random float between 0 and sum(probabilities), f.
-                            Starting from the first probability p0, pick probability pn such that pn-1 is the last probability s.t. pn-1<n. If p0>n, choose p0.
-                        '''
+            while func_source_lines[0][0:4] == '    ':
+                for i in range(0, len(func_source_lines)):
+                    func_source_lines[i] = func_source_lines[i][4:]
 
-                        # Sift through the probabilities
-                        functions = []
-                        probabilities = []
-                        for current_tuple in self.mutation_instructions:
-                            functionIndex = 0 if isinstance(current_tuple[0], FunctionType) or isinstance(current_tuple[0], LambdaType) else 1
-                            probIndex = 1 - functionIndex
-                            functions.append(current_tuple[functionIndex])
-                            probabilities.append(current_tuple[probIndex])
+            func_source = ''.join(func_source_lines)
 
-                        # Add an identity mutator function if needed, smartly.
-                        if sum(probabilities) < 1:  # If we're dealing with probabilities rather than parts and if the identity has been omitted:
-                            probabilities.append(1-sum(probabilities))
-                            functions.append(lambda x : x)
+            # Mutate using the visitor class.
+            mutation_visitor = FuzzVisitor(mutation_operator)
+            abstract_syntax_tree = ast.parse(func_source)
+            mutated_func_uncompiled = mutation_visitor.visit(abstract_syntax_tree)
 
-                        # Pick a random float.
-                        f = random.random() * sum(probabilities)
+            # Compile the newly mutated function into a module and then extract the mutated function definition.
+            compiled_module = compile(mutated_func_uncompiled, inspect.getsourcefile(func), 'exec')
 
-                        # Find the probability chosen
-                        choice = 0
-                        while choice < len(probabilities):
-                            if sum(probabilities[:choice+1]) >= f:
-                                break
-                            else:
-                                choice += 1
+            mutated_func = func
+            mutated_func.func_code = compiled_module.co_consts[0]
+            mutate.mutation_cache[(func, mutation_operator)] = mutated_func
 
-                        # Decide on the choice given by the above algorithm.
-                        mutator_function = functions[choice]
-                    else:
-                        mutator_function = random.choice(self.mutation_instructions)
-                else:
-                    print "None of the above!"
+            # Execute the mutated function.
+            mutated_func(*args, **kwargs)
 
-                # Load function source from mutate.cache if available
-                if func.func_name in mutate.cache.keys():
-                    func_source = mutate.cache[func.func_name]
-                else:
-                    func_source = inspect.getsource(func)
-                    mutate.cache[func.func_name] = func_source
-                # Create function source
-                func_source = ''.join(func_source) + '\n' + func.func_name + '_mod' + '()'
-                # Mutate using the new mutator class
-                mutator = Mutator(mutator_function)
-                abstract_syntax_tree = ast.parse(func_source)
-                mutated_func_uncompiled = mutator.visit(abstract_syntax_tree)
-                mutated_func = func
-                mutated_func.func_code = compile(mutated_func_uncompiled, inspect.getsourcefile(func), 'exec')
-                mutate.cache[(func, mutator_function)] = mutated_func
-                mutated_func(*args, **kwargs)
-            else:
-                func(*args, **kwargs)
         return wrap
 
     @staticmethod
+    def get_source_lines(func):
+        """
+        Will load function source from mutate.cache if available, or else attempt to retrieve from source.
+        :return: a list of lines of code for the specified function.
+        """
+        if func.func_name not in mutate.source_cache.keys():
+            func_source_lines = inspect.getsourcelines(func)[0]
+            mutate.source_cache[func.func_name] = func_source_lines
+
+        return mutate.source_cache[func.func_name]
+
+
+    @staticmethod
     def reset():
-        mutate.cache = {}
+        mutate.source_cache = {}
+        mutate_mutation_cache = {}
 
 
-def mutate_test(lines):
-    if len(lines) > 1 :#and random.choice([True, False]):
-        lines.remove(random.choice(lines))
+def choose_from (distribution=[(1.0, lambda x: x)]):
+    """
+    A composite mutator provider that selects a mutation from a probability distribution, represented as (weight,
+    mutator function) tuples.
+    """
+    def _choose_from(lines):
+        total_weight = sum(map(lambda t: t[0], distribution))
+
+        p = random.uniform(0.0, total_weight)
+
+        upto = 0.0
+        for weight, mutation_operator in distribution:
+            upto += weight
+            if upto >= p:
+                return mutation_operator(lines)
+
+    return _choose_from
+
+
+def in_sequence(sequence=[]):
+    """
+    A composite mutator that applies the supplied list of mutant operators in sequence.
+    """
+    def _in_sequence(lines):
+        for mutation_operator in sequence:
+            lines = mutation_operator(lines)
+
+        return lines
+
+    return _in_sequence
+
+
+def remove_random_step(lines):
+    if len(lines) > 1:
+        index = random.randint(0, len(lines)-1)
+        del lines[index]
     return lines
 
-def mutate_test_two(lines):
+
+def remove_last_step(lines):
+    if len(lines) > 1:
+        lines.pop()
     return lines
 
-@mutate([(0.5, mutate_test)])
-def mutated_function():
+
+def shuffle_steps(steps):
+    return random.shuffle(steps)
+
+
+@mutate(choose_from([(0.5, in_sequence([remove_random_step, remove_random_step]))]))
+def mangled_function():
     print 1
     print 2
     print 3
     print 4
     print 5
 
+
+class Bob:
+
+    def __init__(self):
+        pass
+
+    @mutate(remove_last_step)
+    def testing(self):
+        print 4
+        print 5
+        print 6
+        self.test_other()
+        print 7
+
+    def test_other(self):
+        print "hurrah"
+
 if __name__ == "__main__":
-    for i in range(10):
-        mutated_function()
+    for i in range(3):
+        mangled_function()
         print
+    bob = Bob()
+    bob.testing()
