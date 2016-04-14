@@ -6,88 +6,98 @@ import unittest
 
 from mock import Mock
 
-from fuzzi_moss.core_mutators import *
-import fuzzi_moss.core_mutators
-from fuzzi_moss.mutate_decorator import mutate
+from fuzzi_moss import *
 
 from random import Random
 
 
-class RemoveRandomStepTarget(object):
+class Target(object):
 
     environment = list()
 
     @mutate(remove_random_step)
-    def mangled_function(self):
-        RemoveRandomStepTarget.environment.append(1)
-        RemoveRandomStepTarget.environment.append(2)
-        RemoveRandomStepTarget.environment.append(3)
-
-
-class RemoveLastStepTarget(object):
-
-    environment = list()
+    def mangled_function_remove_random_step(self):
+        Target.environment.append(1)
+        Target.environment.append(2)
+        Target.environment.append(3)
 
     @mutate(remove_last_step)
-    def mangled_function(self):
-        RemoveLastStepTarget.environment.append(1)
-        RemoveLastStepTarget.environment.append(2)
-        RemoveLastStepTarget.environment.append(3)
-
-
-class ChooseFromTarget(object):
-
-    environment = list()
+    def mangled_function_remove_last_step(self):
+        Target.environment.append(1)
+        Target.environment.append(2)
+        Target.environment.append(3)
 
     @mutate(choose_from([(0.5, identity), (0.5, remove_last_step)]))
-    def mangled_function(self):
-        ChooseFromTarget.environment.append(1)
-        ChooseFromTarget.environment.append(2)
-        ChooseFromTarget.environment.append(3)
-
-
-class InSequenceTarget(object):
-
-    environment = list()
+    def mangled_function_choose_from(self):
+        Target.environment.append(1)
+        Target.environment.append(2)
+        Target.environment.append(3)
 
     @mutate(in_sequence([remove_last_step, remove_last_step]))
-    def mangled_function(self):
-        InSequenceTarget.environment.append(1)
-        InSequenceTarget.environment.append(2)
-        InSequenceTarget.environment.append(3)
+    def mangled_function_in_sequence(self):
+        Target.environment.append(1)
+        Target.environment.append(2)
+        Target.environment.append(3)
+
+    @mutate(shuffle_steps)
+    def mangled_function_shuffle_steps(self):
+        Target.environment.append(1)
+        Target.environment.append(2)
+        Target.environment.append(3)
+
+    @mutate(identity)
+    def mangled_function_identity(self):
+        Target.environment.append(1)
+        Target.environment.append(2)
+        Target.environment.append(3)
 
 
 class FuzziMossTest(unittest.TestCase):
 
-    def test_remove__random_step(self):
+    def setUp(self):
+        self.target = Target()
+        Target.environment=list()
 
+    def test_identity(self):
+        self.target.mangled_function_identity()
+        self.assertEquals([1,2,3], Target.environment)
+
+    def test_remove__random_step(self):
         fuzzi_moss.core_mutators.fuzzi_moss_random = Mock(spec=Random)
         fuzzi_moss.core_mutators.fuzzi_moss_random.randint = Mock(side_effect=[1])
 
-        target_a = RemoveRandomStepTarget()
-        target_a.mangled_function()
-        self.assertEqual([1,3], RemoveRandomStepTarget.environment)
+        self.target.mangled_function_remove_random_step()
+        self.assertEqual([1,3], Target.environment)
 
     def test_remove_last_step(self):
-
-        target_b = RemoveLastStepTarget()
-        target_b.mangled_function()
-        self.assertEqual([1, 2], RemoveLastStepTarget.environment)
+        self.target.mangled_function_remove_last_step()
+        self.assertEqual([1, 2], Target.environment)
 
     def test_choose_from(self):
-
         fuzzi_moss.core_mutators.fuzzi_moss_random = Mock(spec=Random)
         fuzzi_moss.core_mutators.fuzzi_moss_random.uniform = Mock(side_effect=[0.75])
 
-        target_c = ChooseFromTarget()
-        target_c.mangled_function()
-        self.assertEqual([1, 2], ChooseFromTarget.environment)
+        self.target.mangled_function_choose_from()
+        self.assertEqual([1, 2], Target.environment)
 
+    def test_in_sequence(self):
+        self.target.mangled_function_in_sequence()
+        self.assertEqual([1], Target.environment)
 
-    def test_sequence(self):
-        target_d = InSequenceTarget()
-        target_d.mangled_function()
-        self.assertEqual([1], InSequenceTarget.environment)
+    def test_shuffle_steps(self):
+
+        def mock_random_shuffle(iter):
+            result = list()
+            result.append(iter[2])
+            result.append(iter[0])
+            result.append(iter[1])
+            return result
+
+        fuzzi_moss.core_mutators.fuzzi_moss_random = Mock(spec=Random)
+        fuzzi_moss.core_mutators.fuzzi_moss_random.shuffle = Mock(side_effect=mock_random_shuffle)
+
+        self.target.mangled_function_shuffle_steps()
+        self.assertEqual([3,1,2], Target.environment)
 
 
 if __name__ == '__main__':

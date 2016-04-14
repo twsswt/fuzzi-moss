@@ -2,6 +2,7 @@ from random import Random
 
 fuzzi_moss_random = Random()
 
+
 def choose_from (distribution=[(1.0, lambda x: x)]):
     """
     A composite mutator provider that selects a mutation from a probability distribution, represented as (weight,
