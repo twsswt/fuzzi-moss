@@ -11,8 +11,8 @@ class WorkflowTransformer(ast.NodeTransformer):
 
     def __init__(self, mutation_operator=lambda x: x, strip_decorators=True):
         """
-        :param mutation_operator: a function that takes a list of strings (lines of program code) and returns another list of
-        lines.
+        :param mutation_operator: a function that takes a list of strings (lines of program code) and returns another
+        list of lines.
         :param strip_decorators: removing decorators prevents re-mutation if a function decorated with a mutator is
         called recursively.
         """

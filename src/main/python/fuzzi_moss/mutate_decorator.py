@@ -7,18 +7,18 @@ import inspect
 from workflow_transformer import WorkflowTransformer
 
 
+# noinspection PyPep8Naming
 class mutate(object):
     """
     The general purpose decorator for applying mutations to functions containing workflow steps.
 
     Attributes:
-        enable_mutations is be default set to True, but can be set to false to globablly disable mutations.
+        enable_mutations is be default set to True, but can be set to false to globally disable mutations.
     """
 
     _mutation_cache = {}
 
     enable_mutations = True
-
 
     def __init__(self, mutation_provider):
         self.mutation_provider = mutation_provider
@@ -55,7 +55,6 @@ class mutate(object):
             return mutated_func(*args, **kwargs)
 
         return wrap
-
 
     @staticmethod
     def reset():

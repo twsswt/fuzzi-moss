@@ -73,29 +73,29 @@ class FuzziMossTest(unittest.TestCase):
 
     def setUp(self):
         self.target = Target()
-        Target.environment=list()
+        Target.environment = list()
 
     def test_identity(self):
         self.target.mangled_function_identity()
-        self.assertEquals([1,2,3], Target.environment)
+        self.assertEquals([1, 2, 3], Target.environment)
 
     def test_remove__random_step(self):
         fuzzi_moss.core_mutators.fuzzi_moss_random = Mock(spec=Random)
         fuzzi_moss.core_mutators.fuzzi_moss_random.randint = Mock(side_effect=[1])
 
         self.target.mangled_function_remove_random_step()
-        self.assertEqual([1,3], Target.environment)
+        self.assertEqual([1, 3], Target.environment)
 
     def test_remove_last_step(self):
         self.target.mangled_function_remove_last_step()
         self.assertEqual([1, 2], Target.environment)
 
     def test_shuffle_steps(self):
-        def mock_random_shuffle(iter):
+        def mock_random_shuffle(iterable):
             result = list()
-            result.append(iter[2])
-            result.append(iter[0])
-            result.append(iter[1])
+            result.append(iterable[2])
+            result.append(iterable[0])
+            result.append(iterable[1])
             return result
 
         fuzzi_moss.core_mutators.fuzzi_moss_random = Mock(spec=Random)
@@ -117,12 +117,11 @@ class FuzziMossTest(unittest.TestCase):
 
     def test_on_condition_that(self):
         self.target.mangled_function_on_condition_that()
-        self.assertEqual([1,2], Target.environment)
+        self.assertEqual([1, 2], Target.environment)
 
     def test_on_condition_that_with_function(self):
         self.target.mangled_function_on_condition_that_with_function()
-        self.assertEqual([1,2,3], Target.environment)
-
+        self.assertEqual([1, 2, 3], Target.environment)
 
 
 if __name__ == '__main__':

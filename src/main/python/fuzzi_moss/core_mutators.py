@@ -1,5 +1,5 @@
 """
-Provides a library of standard mutators for workflows that can be assembled into domain specific mutators.
+Provides a library of standard mutators for work flows that can be assembled into domain specific mutators.
 @author probablytom
 @author twsswt
 """
@@ -34,10 +34,10 @@ def choose_from(distribution=[(1.0, lambda x: x)]):
 
         p = fuzzi_moss_random.uniform(0.0, total_weight)
 
-        upto = 0.0
+        up_to = 0.0
         for weight, mutator in distribution:
-            upto += weight
-            if upto >= p:
+            up_to += weight
+            if up_to >= p:
                 return mutator(steps)
 
     return _choose_from
@@ -46,8 +46,7 @@ def choose_from(distribution=[(1.0, lambda x: x)]):
 def on_condition_that(condition, mutator):
     """
     A composite mutator that applies a mutator if the specified condition holds.
-    : param : condition the condiction to test.  Can either be a boolean value or a 0-ary function
-     that returns a boolean value.
+    : param  condition:  Can either be a boolean value or a 0-ary function that returns a boolean value.
     """
 
     def _on_condition_that(steps):
