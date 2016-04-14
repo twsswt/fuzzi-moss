@@ -1,3 +1,7 @@
+"""
+@author probablytom
+@author twsswt
+"""
 import ast
 
 
