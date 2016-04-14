@@ -10,26 +10,24 @@ from workflow_transformer import WorkflowTransformer
 # noinspection PyPep8Naming
 class fuzz(object):
     """
-    The general purpose decorator for applying mutations to functions containing workflow steps.
+    The general purpose decorator for applying fuzzings to functions containing workflow steps.
 
     Attributes:
-        enable_mutations is be default set to True, but can be set to false to globally disable mutations.
+        enable_fuzzings is by default set to True, but can be set to false to globally disable fuzzing.
     """
 
-    _mutation_cache = {}
+    _fuzzings_cache = {}
 
-    enable_mutations = True
+    enable_fuzzings = True
 
-    def __init__(self, mutation_provider):
-        self.mutation_provider = mutation_provider
+    def __init__(self, fuzz_operator):
+        self.fuzz_operator = fuzz_operator
 
     def __call__(self, func):
         def wrap(*args, **kwargs):
 
-            if not fuzz.enable_mutations:
+            if not fuzz.enable_fuzzings:
                 return func(*args, **kwargs)
-
-            mutation_operator = self.mutation_provider
 
             func_source_lines = inspect.getsourcelines(func)[0]
 
@@ -41,21 +39,21 @@ class fuzz(object):
 
             # Mutate using the visitor class.
             original_syntax_tree = ast.parse(func_source)
-            mutation_visitor = WorkflowTransformer(mutation_operator)
-            mutated_syntax_tree = mutation_visitor.visit(original_syntax_tree)
+            workflow_transformer = WorkflowTransformer(self.fuzz_operator)
+            fuzzed_syntax_tree = workflow_transformer.visit(original_syntax_tree)
 
             # Compile the newly mutated function into a module and then extract the mutated function definition.
-            compiled_module = compile(mutated_syntax_tree, inspect.getsourcefile(func), 'exec')
+            compiled_module = compile(fuzzed_syntax_tree, inspect.getsourcefile(func), 'exec')
 
-            mutated_func = func
-            mutated_func.func_code = compiled_module.co_consts[0]
-            fuzz._mutation_cache[(func, mutation_operator)] = mutated_func
+            fuzzed_function = func
+            fuzzed_function.func_code = compiled_module.co_consts[0]
+            fuzz._fuzzings_cache[(func, self.fuzz_operator)] = fuzzed_function
 
             # Execute the mutated function.
-            return mutated_func(*args, **kwargs)
+            return fuzzed_function(*args, **kwargs)
 
         return wrap
 
     @staticmethod
     def reset():
-        fuzz._mutation_cache = {}
+        fuzz._fuzzings_cache = {}
