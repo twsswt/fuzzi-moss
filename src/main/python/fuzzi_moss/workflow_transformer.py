@@ -7,7 +7,7 @@ import ast
 
 class WorkflowTransformer(ast.NodeTransformer):
 
-    mutants_visited = 0
+    _functions_visited = 0
 
     def __init__(self, mutation_operator=lambda x: x, strip_decorators=True):
         """
@@ -35,5 +35,5 @@ class WorkflowTransformer(ast.NodeTransformer):
         node.body = self.mutation(node.body)
 
         # Now that we've mutated, increment the necessary counters and parse the rest of the tree we're given.
-        WorkflowTransformer.mutants_visited += 1
+        WorkflowTransformer._functions_visited += 1
         return self.generic_visit(node)

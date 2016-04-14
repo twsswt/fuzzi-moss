@@ -8,7 +8,7 @@ from workflow_transformer import WorkflowTransformer
 
 
 # noinspection PyPep8Naming
-class mutate(object):
+class fuzz(object):
     """
     The general purpose decorator for applying mutations to functions containing workflow steps.
 
@@ -26,7 +26,7 @@ class mutate(object):
     def __call__(self, func):
         def wrap(*args, **kwargs):
 
-            if not mutate.enable_mutations:
+            if not fuzz.enable_mutations:
                 return func(*args, **kwargs)
 
             mutation_operator = self.mutation_provider
@@ -49,7 +49,7 @@ class mutate(object):
 
             mutated_func = func
             mutated_func.func_code = compiled_module.co_consts[0]
-            mutate._mutation_cache[(func, mutation_operator)] = mutated_func
+            fuzz._mutation_cache[(func, mutation_operator)] = mutated_func
 
             # Execute the mutated function.
             return mutated_func(*args, **kwargs)
@@ -58,4 +58,4 @@ class mutate(object):
 
     @staticmethod
     def reset():
-        mutate._mutation_cache = {}
+        fuzz._mutation_cache = {}
