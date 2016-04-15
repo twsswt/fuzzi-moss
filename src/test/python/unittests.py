@@ -68,6 +68,20 @@ class Target(object):
         Target.environment.append(2)
         Target.environment.append(3)
 
+    @fuzz(swap_if_blocks)
+    def mangled_function_swap_if_blocks(self):
+        if True:
+            Target.environment.append(1)
+        else:
+            Target.environment.append(2)
+
+    @fuzz(replace_condition_with('1 is 2'))
+    def mangled_function_replace_condition(self):
+        if 1==1:
+            Target.environment.append(1)
+        else:
+            Target.environment.append(2)
+
 
 class FuzziMossTest(unittest.TestCase):
 
@@ -104,6 +118,10 @@ class FuzziMossTest(unittest.TestCase):
         self.target.mangled_function_shuffle_steps()
         self.assertEqual([3, 1, 2], Target.environment)
 
+    def test_swap_if_blocks(self):
+        self.target.mangled_function_swap_if_blocks()
+        self.assertEqual([2], Target.environment)
+
     def test_choose_from(self):
         fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
         fuzzi_moss.core_fuzzers.fuzzi_moss_random.uniform = Mock(side_effect=[0.75])
@@ -122,6 +140,10 @@ class FuzziMossTest(unittest.TestCase):
     def test_on_condition_that_with_function(self):
         self.target.mangled_function_on_condition_that_with_function()
         self.assertEqual([1, 2, 3], Target.environment)
+
+    def test_replace_condition(self):
+        self.target.mangled_function_replace_condition()
+        self.assertEquals([2], Target.environment)
 
 
 if __name__ == '__main__':

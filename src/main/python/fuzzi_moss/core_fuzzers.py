@@ -8,6 +8,8 @@ from random import Random
 
 fuzzi_moss_random = Random()
 
+from ast import If, While
+import ast
 
 def in_sequence(sequence=[]):
     """
@@ -87,3 +89,28 @@ def remove_last_step(steps):
 
 def shuffle_steps(steps):
     return fuzzi_moss_random.shuffle(steps)
+
+
+def swap_if_blocks(steps):
+    for step in steps:
+        if type(step) is If:
+            temp = step.body
+            step.body = step.orelse
+            step.orelse = temp
+
+    return steps
+
+
+def replace_condition_with(condition):
+    def _replace_condition(steps):
+        for step in steps:
+            if type(step) is If or type(step) is While:
+                parsed_ast = ast.parse('if %s: pass\nelse: False' % condition)
+                step.test = parsed_ast.body[0].test
+        return steps
+
+    return _replace_condition
+
+
+if True: pass
+else: pass
