@@ -9,8 +9,6 @@ from mock import Mock
 
 from fuzzi_moss import *
 
-from random import Random
-
 
 def bool_func():
     return False
@@ -114,7 +112,7 @@ class FuzziMossTest(unittest.TestCase):
 
     def test_remove__random_step_twice(self):
         fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random.randint = Mock(side_effect=[1,2])
+        fuzzi_moss.core_fuzzers.fuzzi_moss_random.randint = Mock(side_effect=[1, 2])
 
         self.target.mangled_function_remove_random_step()
         self.target.mangled_function_remove_random_step()
