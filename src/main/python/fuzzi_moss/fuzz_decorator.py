@@ -3,6 +3,7 @@
 @author tws
 """
 import ast
+import copy
 import inspect
 from workflow_transformer import WorkflowTransformer
 
@@ -16,12 +17,11 @@ class fuzz(object):
         enable_fuzzings is by default set to True, but can be set to false to globally disable fuzzing.
     """
 
-    _fuzzings_cache = {}
-
     enable_fuzzings = True
 
     def __init__(self, fuzz_operator):
         self.fuzz_operator = fuzz_operator
+        self._original_syntax_tree = None
 
     def __call__(self, func):
         def wrap(*args, **kwargs):
@@ -29,6 +29,26 @@ class fuzz(object):
             if not fuzz.enable_fuzzings:
                 return func(*args, **kwargs)
 
+            self.initialise_reference_syntax_tree(func)
+
+            # Mutate using the visitor class.
+            fuzzed_syntax_tree = copy.deepcopy(self._original_syntax_tree)
+            workflow_transformer = WorkflowTransformer(self.fuzz_operator)
+            workflow_transformer.visit(fuzzed_syntax_tree)
+
+            # Compile the newly mutated function into a module and then extract the mutated function definition.
+            compiled_module = compile(fuzzed_syntax_tree, inspect.getsourcefile(func), 'exec')
+
+            fuzzed_function = func
+            fuzzed_function.func_code = compiled_module.co_consts[0]
+
+            # Execute the mutated function.
+            return fuzzed_function(*args, **kwargs)
+
+        return wrap
+
+    def initialise_reference_syntax_tree (self, func):
+        if self._original_syntax_tree is None:
             func_source_lines = inspect.getsourcelines(func)[0]
 
             while func_source_lines[0][0:4] == '    ':
@@ -37,23 +57,4 @@ class fuzz(object):
 
             func_source = ''.join(func_source_lines)
 
-            # Mutate using the visitor class.
-            original_syntax_tree = ast.parse(func_source)
-            workflow_transformer = WorkflowTransformer(self.fuzz_operator)
-            fuzzed_syntax_tree = workflow_transformer.visit(original_syntax_tree)
-
-            # Compile the newly mutated function into a module and then extract the mutated function definition.
-            compiled_module = compile(fuzzed_syntax_tree, inspect.getsourcefile(func), 'exec')
-
-            fuzzed_function = func
-            fuzzed_function.func_code = compiled_module.co_consts[0]
-            fuzz._fuzzings_cache[(func, self.fuzz_operator)] = fuzzed_function
-
-            # Execute the mutated function.
-            return fuzzed_function(*args, **kwargs)
-
-        return wrap
-
-    @staticmethod
-    def reset():
-        fuzz._fuzzings_cache = {}
+            self._original_syntax_tree = ast.parse(func_source)
