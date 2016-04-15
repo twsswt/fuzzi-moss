@@ -10,6 +10,7 @@ setup(
     author='Tom Wallis, Tim Storer',
     author_email='',
     description='Fuzzing for Modelling Variance in Socio-technical Systems',
-    test_suite='tests.unittests',
-    tests_require=['mock']
+    setup_requires=['nose'],
+    test_suite='nose.collector',
+    tests_require=['mock','nose']
 )
