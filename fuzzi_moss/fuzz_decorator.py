@@ -51,10 +51,10 @@ class fuzz(object):
         if self._original_syntax_tree is None:
             func_source_lines = inspect.getsourcelines(func)[0]
 
-            while func_source_lines[0][0:4] == '    ':
-                for i in range(0, len(func_source_lines)):
-                    func_source_lines[i] = func_source_lines[i][4:]
-
+            global_indentation = len(func_source_lines[0]) - len(func_source_lines[0].strip())
+            for i in range(len(func_source_lines)):
+                func_source_lines[i] = func_source_lines[i][global_indentation-1:]
+            
             func_source = ''.join(func_source_lines)
 
             self._original_syntax_tree = ast.parse(func_source)
