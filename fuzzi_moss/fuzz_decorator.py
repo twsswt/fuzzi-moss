@@ -5,6 +5,7 @@
 import ast
 import copy
 import inspect
+import fuzzi_moss
 from workflow_transformer import WorkflowTransformer
 
 
@@ -17,16 +18,13 @@ class fuzz(object):
         enable_fuzzings is by default set to True, but can be set to false to globally disable fuzzing.
     """
 
-    enable_fuzzings = True
-
     def __init__(self, fuzz_operator):
         self.fuzz_operator = fuzz_operator
         self._original_syntax_tree = None
 
     def __call__(self, func):
         def wrap(*args, **kwargs):
-
-            if not fuzz.enable_fuzzings:
+            if not fuzzi_moss.enable_fuzzings:
                 return func(*args, **kwargs)
 
             self.initialise_reference_syntax_tree(func)

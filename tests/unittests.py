@@ -9,6 +9,7 @@ from mock import Mock
 
 from fuzzi_moss import *
 
+fuzzi_moss.enable_fuzzings=True
 
 def bool_func():
     return False
