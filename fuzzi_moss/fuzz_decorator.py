@@ -23,7 +23,9 @@ class fuzz(object):
         self._original_syntax_tree = None
 
     def __call__(self, func):
+
         def wrap(*args, **kwargs):
+
             if not fuzzi_moss.enable_fuzzings:
                 return func(*args, **kwargs)
 
@@ -54,5 +56,4 @@ class fuzz(object):
                 func_source_lines[i] = func_source_lines[i][global_indentation-1:]
             
             func_source = ''.join(func_source_lines)
-
             self._original_syntax_tree = ast.parse(func_source)

@@ -9,11 +9,11 @@ from mock import Mock
 
 from fuzzi_moss import *
 
-fuzzi_moss.enable_fuzzings=True
+fuzzi_moss.enable_fuzzings = True
+
 
 def bool_func():
     return False
-
 
 class ExampleWorkflow(object):
 
@@ -28,6 +28,12 @@ class ExampleWorkflow(object):
 
     @fuzz(remove_random_step)
     def mangled_function_remove_random_step(self):
+        self.environment.append(1)
+        self.environment.append(2)
+        self.environment.append(3)
+
+    @fuzz(in_sequence([remove_random_step, remove_random_step, remove_random_step]))
+    def mangled_function_remove_all_steps_in_random_sequence(self):
         self.environment.append(1)
         self.environment.append(2)
         self.environment.append(3)
@@ -56,6 +62,12 @@ class ExampleWorkflow(object):
         self.environment.append(2)
         self.environment.append(3)
 
+    @fuzz(in_sequence([remove_last_step, remove_last_step, remove_last_step]))
+    def mangled_function_remove_all_steps(self):
+        self.environment.append(1)
+        self.environment.append(2)
+        self.environment.append(3)
+
     @fuzz(on_condition_that(True, remove_last_step))
     def mangled_function_on_condition_that(self):
         self.environment.append(1)
@@ -77,7 +89,28 @@ class ExampleWorkflow(object):
 
     @fuzz(replace_condition_with('1 is 2'))
     def mangled_function_replace_condition(self):
-        if 1==1:
+        if 1 is 1:
+            self.environment.append(1)
+        else:
+            self.environment.append(2)
+
+    @fuzz(recurse_into_nested_steps(remove_last_step))
+    def manged_function_with_nested_for_and_try(self):
+        for i in range(0,3):
+            try:
+                self.environment.append(i)
+            except Exception:
+                pass
+
+    @fuzz(replace_condition_with(bool_func))
+    def mangled_function_replace_condition_with_function(self):
+        """
+        TODO Ideally, it would be nice to use this fuzzer with a lambda expression.  Unfortunately, there is a bug in
+        the BlockFinder class, inspect.py due to an assumption that lambda expressions are always defined on one line.
+        This assumption doesn't hold, if the lambda is nested within a decorator for the function we actually want the
+         lines of code for.
+        """
+        if 1 is 1:
             self.environment.append(1)
         else:
             self.environment.append(2)
@@ -119,6 +152,13 @@ class FuzziMossTest(unittest.TestCase):
         self.target.mangled_function_remove_random_step()
         self.assertEqual([1, 3, 1, 2], self.environment)
 
+    def test_remove_all_steps_in_random_sequence(self):
+        fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
+        fuzzi_moss.core_fuzzers.fuzzi_moss_random.randint = Mock(side_effect=[1, 1])
+
+        self.target.mangled_function_remove_all_steps_in_random_sequence()
+        self.assertEqual([], self.environment)
+
     def test_remove_last_step(self):
         self.target.mangled_function_remove_last_step()
         self.assertEqual([1, 2], self.environment)
@@ -127,6 +167,10 @@ class FuzziMossTest(unittest.TestCase):
         self.target.mangled_function_remove_last_step()
         self.target.mangled_function_remove_last_step()
         self.assertEqual([1, 2, 1, 2], self.environment)
+
+    def test_remove_all_steps(self):
+        self.target.mangled_function_remove_all_steps()
+        self.assertEqual([], self.environment)
 
     def test_shuffle_steps(self):
         def mock_random_shuffle(iterable):
@@ -172,6 +216,16 @@ class FuzziMossTest(unittest.TestCase):
     def test_make_nested_fuzzing_call(self):
         self.target.make_nested_fuzzing_call()
         self.assertEquals([1,3], self.environment)
+
+    def test_replace_condition_with_function(self):
+        self.target.mangled_function_replace_condition_with_function()
+        self.assertEquals([2], self.environment)
+        pass
+
+    def test_apply_fuzzer_to_nested_statements(self):
+        self.target.manged_function_with_nested_for_and_try()
+        self.assertEquals([0,1,2], self.environment)
+        pass
 
 
 if __name__ == '__main__':

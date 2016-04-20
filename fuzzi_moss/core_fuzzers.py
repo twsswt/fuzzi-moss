@@ -4,12 +4,15 @@ Provides a library of standard fuzz operators for work flows that can be assembl
 @author twsswt
 """
 
+import ast
+from ast import If, While
+import inspect
+
 from random import Random
+
 
 fuzzi_moss_random = Random()
 
-from ast import If, While
-import ast
 
 def in_sequence(sequence=[]):
     """
@@ -78,12 +81,18 @@ def remove_random_step(steps):
     if len(steps) > 1:
         index = fuzzi_moss_random.randint(0, len(steps) - 1)
         del steps[index]
+    else:
+        last_step = steps[0]
+        steps = [ast.Pass(lineno=last_step.lineno, col_offset=last_step.lineno)]
     return steps
 
 
 def remove_last_step(steps):
     if len(steps) > 1:
         steps.pop()
+    else:
+        last_step = steps[0]
+        steps = [ast.Pass(lineno=last_step.lineno, col_offset=last_step.lineno)]
     return steps
 
 
@@ -102,15 +111,39 @@ def swap_if_blocks(steps):
 
 
 def replace_condition_with(condition):
+    if type(condition) is str:
+        parsed_ast = ast.parse('if %s: pass\nelse: False' % condition)
+        replacement = parsed_ast.body[0].test
+    elif hasattr(condition,'__call__'):
+        replacement = ast.Call(
+            func=ast.Name(
+                id=condition.func_name,
+                lineno=1,
+                col_offset=1,
+                ctx=ast.Load()),
+            col_offset=1,
+            lineno=1,args=list(),
+            keywords=list())
+
     def _replace_condition(steps):
         for step in steps:
             if type(step) is If or type(step) is While:
-                parsed_ast = ast.parse('if %s: pass\nelse: False' % condition)
-                step.test = parsed_ast.body[0].test
+                step.test = replacement
         return steps
 
     return _replace_condition
 
 
-if True: pass
-else: pass
+def recurse_into_nested_steps(fuzzer=identity):
+    def _recurse_into_nested_steps(steps):
+
+        for step in steps:
+            if  type(step) in {ast.For, ast.TryExcept, ast.While}:
+                _recurse_into_nested_steps(step.body)
+
+        fuzzer(steps)
+
+        return steps
+
+    return _recurse_into_nested_steps
+
