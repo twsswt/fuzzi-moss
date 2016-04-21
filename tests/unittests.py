@@ -15,6 +15,7 @@ fuzzi_moss.enable_fuzzings = True
 def bool_func():
     return False
 
+
 class ExampleWorkflow(object):
 
     def __init__(self, environment):
@@ -22,6 +23,12 @@ class ExampleWorkflow(object):
 
     @fuzz(identity)
     def mangled_function_identity(self):
+        self.environment.append(1)
+        self.environment.append(2)
+        self.environment.append(3)
+
+    @fuzz(remove_last_step)
+    def mangled_function_remove_last_step(self):
         self.environment.append(1)
         self.environment.append(2)
         self.environment.append(3)
@@ -34,12 +41,6 @@ class ExampleWorkflow(object):
 
     @fuzz(in_sequence([remove_random_step, remove_random_step, remove_random_step]))
     def mangled_function_remove_all_steps_in_random_sequence(self):
-        self.environment.append(1)
-        self.environment.append(2)
-        self.environment.append(3)
-
-    @fuzz(remove_last_step)
-    def mangled_function_remove_last_step(self):
         self.environment.append(1)
         self.environment.append(2)
         self.environment.append(3)
@@ -94,14 +95,6 @@ class ExampleWorkflow(object):
         else:
             self.environment.append(2)
 
-    @fuzz(recurse_into_nested_steps(remove_last_step))
-    def manged_function_with_nested_for_and_try(self):
-        for i in range(0,3):
-            try:
-                self.environment.append(i)
-            except Exception:
-                pass
-
     @fuzz(replace_condition_with(bool_func))
     def mangled_function_replace_condition_with_function(self):
         """
@@ -126,6 +119,19 @@ class ExampleWorkflow(object):
         self.environment.append(1)
         self.environment.append(2)
 
+    @fuzz(replace_for_iterator_with([3, 2, 1]))
+    def mangled_function_replace_iterator(self):
+        for i in [1, 2, 3, 4, ]:
+            self.environment.append(i)
+
+    @fuzz(recurse_into_nested_steps(remove_last_step))
+    def manged_function_with_nested_for_and_try(self):
+        for i in range(0, 3):
+            try:
+                self.environment.append(i)
+            except Exception:
+                pass
+
 
 class FuzziMossTest(unittest.TestCase):
 
@@ -136,6 +142,15 @@ class FuzziMossTest(unittest.TestCase):
     def test_identity(self):
         self.target.mangled_function_identity()
         self.assertEquals([1, 2, 3], self.environment)
+
+    def test_remove_last_step(self):
+        self.target.mangled_function_remove_last_step()
+        self.assertEqual([1, 2], self.environment)
+
+    def test_remove_last_step_twice(self):
+        self.target.mangled_function_remove_last_step()
+        self.target.mangled_function_remove_last_step()
+        self.assertEqual([1, 2, 1, 2], self.environment)
 
     def test_remove__random_step(self):
         fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
@@ -158,15 +173,6 @@ class FuzziMossTest(unittest.TestCase):
 
         self.target.mangled_function_remove_all_steps_in_random_sequence()
         self.assertEqual([], self.environment)
-
-    def test_remove_last_step(self):
-        self.target.mangled_function_remove_last_step()
-        self.assertEqual([1, 2], self.environment)
-
-    def test_remove_last_step_twice(self):
-        self.target.mangled_function_remove_last_step()
-        self.target.mangled_function_remove_last_step()
-        self.assertEqual([1, 2, 1, 2], self.environment)
 
     def test_remove_all_steps(self):
         self.target.mangled_function_remove_all_steps()
@@ -221,6 +227,10 @@ class FuzziMossTest(unittest.TestCase):
         self.target.mangled_function_replace_condition_with_function()
         self.assertEquals([2], self.environment)
         pass
+
+    def test_replace_iterator(self):
+        self.target.mangled_function_replace_iterator()
+        self.assertEquals([3, 2, 1], self.environment)
 
     def test_apply_fuzzer_to_nested_statements(self):
         self.target.manged_function_with_nested_for_and_try()
