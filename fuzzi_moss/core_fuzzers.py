@@ -8,6 +8,8 @@ import ast
 import _ast
 from ast import If, While
 
+import copy
+
 from random import Random
 
 fuzzi_moss_random = Random()
@@ -30,16 +32,14 @@ def filter_steps(filter=lambda steps: range(0, len(steps)), fuzzer=identity):
     :param fuzzer: the fuzzer to apply to the filtered steps.
     """
     def _filter_steps(steps):
-        filtered_step_indices = filter(steps)
+        regions = filter(steps)
 
-        filtered_steps = list()
-        for filtered_step_index in filtered_step_indices:
-            filtered_steps.append(steps[filtered_step_index])
+        for region in regions:
+            start = region[0]
+            end = region[1]
 
-        fuzzed_steps=fuzzer(filtered_steps)
-
-        for i in range(0, len(fuzzed_steps)):
-            steps[filtered_step_indices[i]] = fuzzed_steps[i]
+            filtered_steps = steps[start:end]
+            steps[start:end]=fuzzer(filtered_steps)
 
         return steps
 
@@ -52,10 +52,11 @@ def filter_steps(filter=lambda steps: range(0, len(steps)), fuzzer=identity):
 def choose_random_steps(n):
 
     def _choose_random_steps(steps):
-        result = list()
-        for _ in range(0,1):
-            result.append(fuzzi_moss_random.randint(0, len(steps)-1))
-        return result
+        if len(steps) <= n:
+            return [(0, len(steps)-1)]
+        else:
+            sample_indices = fuzzi_moss_random.sample(range(0, len(steps)-1), n)
+            return [(i, i+1) for i in sample_indices]
 
     return _choose_random_steps
 
@@ -66,16 +67,19 @@ def choose_last_step(steps):
     while candidate > 0 and type(step) is ast.Pass:
         candidate-=1
         step = steps[candidate]
-    return [candidate]
+    return [(candidate, candidate+1)]
 
 
 def exclude_control_structures(target={ast.For, ast.If, ast.TryExcept, ast.While}):
     def _exclude_control_structures(steps):
         result = list()
+
         for i in range(0,len(steps)):
             if type(steps[i]) not in {ast.For, ast.If, ast.TryExcept, ast.While} & target:
-                result.append(i)
-            return result
+                result.append((i, i+1))
+
+        return result
+
     return _exclude_control_structures
 
 
@@ -90,6 +94,10 @@ def replace_steps_with_passes(steps):
     return [_replace_step_with_pass(step) for step in steps]
 
 
+def duplicate_steps(steps):
+    return steps + copy.deepcopy(steps)
+
+
 def remove_last_step(steps):
     fuzzer = filter_steps(choose_last_step, replace_steps_with_passes)
     return fuzzer(steps)
@@ -97,6 +105,11 @@ def remove_last_step(steps):
 
 def remove_random_step(steps):
     fuzzer = filter_steps(choose_random_steps(1), replace_steps_with_passes)
+    return fuzzer(steps)
+
+
+def duplicate_last_step(steps):
+    fuzzer = filter_steps(choose_last_step, duplicate_steps)
     return fuzzer(steps)
 
 

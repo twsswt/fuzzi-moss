@@ -33,6 +33,12 @@ class ExampleWorkflow(object):
         self.environment.append(2)
         self.environment.append(3)
 
+    @fuzz(duplicate_last_step)
+    def mangled_function_duplicate_last_step(self):
+        self.environment.append(1)
+        self.environment.append(2)
+        self.environment.append(3)
+
     @fuzz(remove_random_step)
     def mangled_function_remove_random_step(self):
         self.environment.append(1)
@@ -146,6 +152,14 @@ class ExampleWorkflow(object):
             self.append("TO BE REMOVED")
         self.append("TO BE REMOVED")
 
+    @fuzz(filter_steps(exclude_control_structures({ast.For}), remove_last_step))
+    def mangled_function_excluding_control_structures(self):
+        if True:
+            self.environment.append(1)
+
+        for i in range(1, 3):
+            self.environment.append(i)
+
 
 class FuzziMossTest(unittest.TestCase):
 
@@ -166,16 +180,20 @@ class FuzziMossTest(unittest.TestCase):
         self.target.mangled_function_remove_last_step()
         self.assertEqual([1, 2, 1, 2], self.environment)
 
+    def test_duplicate_last_step(self):
+        self.target.mangled_function_duplicate_last_step()
+        self.assertEqual([1, 2, 3, 3], self.environment)
+
     def test_remove__random_step(self):
         fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random.randint = Mock(side_effect=[1])
+        fuzzi_moss.core_fuzzers.fuzzi_moss_random.sample = Mock(side_effect=[[1]])
 
         self.target.mangled_function_remove_random_step()
         self.assertEqual([1, 3], self.environment)
 
     def test_remove__random_step_twice(self):
         fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random.randint = Mock(side_effect=[1, 2])
+        fuzzi_moss.core_fuzzers.fuzzi_moss_random.sample = Mock(side_effect=[[1], [2]])
 
         self.target.mangled_function_remove_random_step()
         self.target.mangled_function_remove_random_step()
@@ -183,7 +201,7 @@ class FuzziMossTest(unittest.TestCase):
 
     def test_replace_all_steps_with_pass_in_random_sequence(self):
         fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random.randint = Mock(side_effect=[0, 1, 2])
+        fuzzi_moss.core_fuzzers.fuzzi_moss_random.sample = Mock(side_effect=[[0], [1], [2]])
 
         self.target.mangled_function_replace_all_steps_with_pass_in_random_sequence()
         self.assertEqual([], self.environment)
@@ -256,6 +274,10 @@ class FuzziMossTest(unittest.TestCase):
         self.target.manged_function_with_nested_for_and_try()
         self.assertEquals([0, 1, 2, 7], self.environment)
         pass
+
+    def test_mangled_function_excluding_control_structures(self):
+        self.target.mangled_function_excluding_control_structures()
+        self.assertEquals([1,2], self.environment)
 
 
 if __name__ == '__main__':
