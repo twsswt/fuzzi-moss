@@ -13,13 +13,10 @@ from workflow_transformer import WorkflowTransformer
 class fuzz(object):
     """
     The general purpose decorator for applying fuzzings to functions containing workflow steps.
-
-    Attributes:
-        enable_fuzzings is by default set to True, but can be set to false to globally disable fuzzing.
     """
 
-    def __init__(self, fuzz_operator):
-        self.fuzz_operator = fuzz_operator
+    def __init__(self, fuzzer=lambda steps : steps):
+        self.fuzz_operator = fuzzer
         self._original_syntax_tree = None
 
     def __call__(self, func):

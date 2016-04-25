@@ -16,6 +16,8 @@ def bool_func():
     return False
 
 
+my_list = [1, 2, 3, 4]
+
 class ExampleWorkflow(object):
 
     def __init__(self, environment):
@@ -133,7 +135,8 @@ class ExampleWorkflow(object):
         self.environment.append(1)
         self.environment.append(2)
 
-    @fuzz(replace_for_iterator_with([3, 2, 1]))
+    #[3, 2, 1]
+    @fuzz(replace_for_iterator_with([3, 2, 1]))#(my_list.__iter__))
     def mangled_function_replace_iterator(self):
         for i in [1, 2, 3, 4, ]:
             self.environment.append(i)

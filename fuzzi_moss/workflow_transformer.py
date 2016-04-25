@@ -9,16 +9,16 @@ class WorkflowTransformer(ast.NodeTransformer):
 
     _functions_visited = 0
 
-    def __init__(self, mutation_operator=lambda x: x, strip_decorators=True):
+    def __init__(self, fuzzer=lambda x: x, strip_decorators=True):
         """
-        :param mutation_operator: a function that takes a list of strings (lines of program code) and returns another
+        :param fuzzer: a function that takes a list of strings (lines of program code) and returns another
         list of lines.
         :param strip_decorators: removing decorators prevents re-mutation if a function decorated with a mutator is
         called recursively.
         """
 
         self.strip_decorators = strip_decorators
-        self.mutation = mutation_operator
+        self.fuzzer = fuzzer
 
     def visit_FunctionDef(self, node):
         """
@@ -32,7 +32,7 @@ class WorkflowTransformer(ast.NodeTransformer):
         if self.strip_decorators:
             node.decorator_list = []
 
-        node.body = self.mutation(node.body)
+        node.body = self.fuzzer(node.body)
 
         # Now that we've mutated, increment the necessary counters and parse the rest of the tree we're given.
         WorkflowTransformer._functions_visited += 1

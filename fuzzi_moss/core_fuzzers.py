@@ -49,6 +49,10 @@ def filter_steps(filter=lambda steps: range(0, len(steps)), fuzzer=identity):
 # Step Filtering functions.
 
 
+def choose_identity(steps):
+    return (0, len(steps))
+
+
 def choose_random_steps(n):
 
     def _choose_random_steps(steps):
@@ -70,12 +74,12 @@ def choose_last_step(steps):
     return [(candidate, candidate+1)]
 
 
-def exclude_control_structures(target={ast.For, ast.If, ast.TryExcept, ast.While}):
+def exclude_control_structures(target={ast.For, ast.If, ast.TryExcept, ast.While, ast.Return}):
     def _exclude_control_structures(steps):
         result = list()
 
         for i in range(0,len(steps)):
-            if type(steps[i]) not in {ast.For, ast.If, ast.TryExcept, ast.While} & target:
+            if type(steps[i]) not in {ast.For, ast.If, ast.TryExcept, ast.While, ast.Return} & target:
                 result.append((i, i+1))
 
         return result
@@ -252,6 +256,9 @@ def replace_for_iterator_with(replacement=[]):
                         col_offset=step.iter.col_offset,
                         elts=elements,
                         ctx=step.iter.ctx)
+
+                elif callable(replacement):
+                    pass
 
                 step.iter = replacement_ast
         return steps
