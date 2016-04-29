@@ -14,7 +14,6 @@ from random import Random
 
 fuzzi_moss_random = Random()
 
-
 # Template fuzzers and associated default identity functions.
 
 
@@ -86,6 +85,11 @@ def exclude_control_structures(target={ast.For, ast.If, ast.TryExcept, ast.While
 
     return _exclude_control_structures
 
+
+#def invert(fuzz_filter):
+#    def _invert(steps):
+#        mirror = fuzz_filter(steps)
+#        exclusion_set =
 
 # Atomic Fuzzers.
 
