@@ -10,6 +10,8 @@ from ast import If, While
 
 import copy
 
+import inspect
+
 from random import Random
 
 fuzzi_moss_random = Random()
@@ -45,7 +47,7 @@ def filter_steps(filter=lambda steps: range(0, len(steps)), fuzzer=identity):
     return _filter_steps
 
 
-# Step Filtering functions.
+# #Step Filtering Functions.
 
 
 def choose_identity(steps):
@@ -64,21 +66,39 @@ def choose_random_steps(n):
     return _choose_random_steps
 
 
+def choose_last_steps(n):
+
+    def _choose_last_step(steps):
+        selected = list()
+        candidate = len(steps) - 1
+
+        while len(selected) < n and candidate >= 0:
+            step = steps[candidate]
+            while candidate > 0 and type(step) is ast.Pass:
+                candidate -= 1
+                step = steps[candidate]
+            selected.append((candidate, candidate + 1))
+            candidate -=1
+
+        return selected
+
+    return _choose_last_step
+
+
 def choose_last_step(steps):
-    candidate = len(steps)-1
-    step = steps[candidate]
-    while candidate > 0 and type(step) is ast.Pass:
-        candidate-=1
-        step = steps[candidate]
-    return [(candidate, candidate+1)]
+    func = choose_last_steps(1)
+    return func(steps)
 
 
-def exclude_control_structures(target={ast.For, ast.If, ast.TryExcept, ast.While, ast.Return}):
+_control_structure_ast_types = {ast.For, ast.If, ast.TryExcept, ast.While, ast.Return}
+
+
+def exclude_control_structures(target=_control_structure_ast_types):
     def _exclude_control_structures(steps):
         result = list()
 
         for i in range(0,len(steps)):
-            if type(steps[i]) not in {ast.For, ast.If, ast.TryExcept, ast.While, ast.Return} & target:
+            if type(steps[i]) not in _control_structure_ast_types & target:
                 result.append((i, i+1))
 
         return result
@@ -86,53 +106,28 @@ def exclude_control_structures(target={ast.For, ast.If, ast.TryExcept, ast.While
     return _exclude_control_structures
 
 
-#def invert(fuzz_filter):
-#    def _invert(steps):
-#        mirror = fuzz_filter(steps)
-#        exclusion_set =
+def invert(fuzz_filter):
+    """
+    Inverts the application of the supplied filter.  Note that invert is symetrical, i.e.
+    invert(invert(f)) is f.
+    """
+    def _invert(steps):
+        original = fuzz_filter(steps)
+        inverted = list()
 
-# Atomic Fuzzers.
+        start = 0
+        end = -1
+        for block in original:
+            end = block[0]
+            inverted.append((start, end))
+            start = block[1]
 
+        if not start == len(steps):
+            inverted.append((start, len(steps)))
 
-def _replace_step_with_pass(step):
-    return ast.Pass(lineno=step.lineno, col_offset=step.lineno)
+        return inverted
 
-
-def replace_steps_with_passes(steps):
-    return [_replace_step_with_pass(step) for step in steps]
-
-
-def duplicate_steps(steps):
-    return steps + copy.deepcopy(steps)
-
-
-def remove_last_step(steps):
-    fuzzer = filter_steps(choose_last_step, replace_steps_with_passes)
-    return fuzzer(steps)
-
-
-def remove_random_step(steps):
-    fuzzer = filter_steps(choose_random_steps(1), replace_steps_with_passes)
-    return fuzzer(steps)
-
-
-def duplicate_last_step(steps):
-    fuzzer = filter_steps(choose_last_step, duplicate_steps)
-    return fuzzer(steps)
-
-
-def shuffle_steps(steps):
-    return fuzzi_moss_random.shuffle(steps)
-
-
-def swap_if_blocks(steps):
-    for step in steps:
-        if type(step) is If:
-            temp = step.body
-            step.body = step.orelse
-            step.orelse = temp
-
-    return steps
+    return _invert
 
 
 # Composite Fuzzers
@@ -199,27 +194,39 @@ def on_condition_that(condition, fuzzer):
 
 def replace_condition_with(condition=False):
     """
-    A composite fuzzer that replaces conditions with the supplied condition.  The supplied condition may be a boolean
+    A composite fuzzer that replaces conditions with the supplied condition.
+    :param condition: The supplied condition that will be converted into a Python AST boolean expression. The condition
+    can be supplied as a:
+
+      * string boolean expression, such as '1==2'
+      * a function reference
+      * a lambda expression, *provided that* the expression is defined in a single line of code.
     """
+
     def build_replacement(step):
 
         if type(condition) is str:
+
             parsed_ast = ast.parse('if %s: pass\nelse: False' % condition)
             return parsed_ast.body[0].test
 
         elif hasattr(condition, '__call__'):
-            return ast.Call(
-                func=ast.Name(
+
+            if condition.func_name == '<lambda>':
+                containing_string = inspect.getsourcelines(condition)[0][0].strip()
+                fuzzer_string = containing_string[containing_string.index(':')+1:].strip()
+                lambda_string = fuzzer_string[23:-1]
+                func_ast = ast.parse(lambda_string).body[0].value
+
+            else:
+                func_ast = ast.Name(
                     id=condition.func_name,
                     lineno=step.lineno,
                     col_offset=step.col_offset,
                     ctx=ast.Load()
-                ),
-                col_offset=step.col_offset,
-                lineno=step.lineno,
-                args=list(),
-                keywords=list()
-            )
+                )
+
+            return ast.Call(func=func_ast, col_offset=step.col_offset, lineno=step.lineno, args=list(), keywords=list())
 
         elif type(condition) is bool:
             return _ast.Name(
@@ -243,6 +250,7 @@ def replace_for_iterator_with(replacement=[]):
     A composite fuzzer that replaces iterable expressions with the supplied iterable.  The function currently only
     supports lists of numbers and string literals.
     """
+
     def _replace_iterator_with(steps):
         for step in steps:
             if type(step) is ast.For:
@@ -290,3 +298,87 @@ def recurse_into_nested_steps(fuzzer=identity, target_structures={ast.For, ast.T
         return fuzzer(steps)
 
     return _recurse_into_nested_steps
+
+
+# Atomic Fuzzers.
+
+
+def _replace_step_with_pass(step):
+    return ast.Pass(lineno=step.lineno, col_offset=step.lineno)
+
+
+def replace_steps_with_passes(steps):
+    return [_replace_step_with_pass(step) for step in steps]
+
+
+def duplicate_steps(steps):
+    return steps + copy.deepcopy(steps)
+
+
+def shuffle_steps(steps):
+    return fuzzi_moss_random.shuffle(steps)
+
+
+def swap_if_blocks(steps):
+    for step in steps:
+        if type(step) is If:
+            temp = step.body
+            step.body = step.orelse
+            step.orelse = temp
+
+    return steps
+
+
+# Utility fuzzers
+
+
+def remove_last_steps(n):
+    fuzzer = filter_steps(choose_last_steps(n), replace_steps_with_passes)
+
+    def _remove_last_steps(steps):
+        return fuzzer(steps)
+
+    return fuzzer
+
+
+def remove_last_step(steps):
+    fuzzer = remove_last_steps(1)
+    return fuzzer(steps)
+
+
+def remove_random_step(steps):
+    fuzzer = filter_steps(choose_random_steps(1), replace_steps_with_passes)
+    return fuzzer(steps)
+
+
+def duplicate_last_step(steps):
+    fuzzer = filter_steps(choose_last_step, duplicate_steps)
+    return fuzzer(steps)
+
+
+# Socio-technical fuzzers.
+
+
+def become_distracted (distribution=lambda p: 1):
+    """
+    Creates a fuzzer that removes a random number of lines of code from the end of the fuzzed workflow.  The number
+    of lines removed is determined by the supplied distribution function.
+
+    :param distribution:  A function that accepts a probability (0.0 <= p <= 1.0) and returns an integer number of
+    lines to be removed.
+    :return: the underlying fuzzer.
+    """
+
+    def _become_distracted(steps):
+        fuzzer = remove_last_steps(distribution(fuzzi_moss_random.random()))
+        return fuzzer(steps)
+
+    return _become_distracted
+
+
+def decision_mistake():
+    pass
+
+
+def become_muddled():
+    pass

@@ -114,7 +114,7 @@ class ExampleWorkflow(object):
         else:
             self.environment.append(2)
 
-    @fuzz(replace_condition_with(bool_func()))
+    @fuzz(replace_condition_with(False))
     def mangled_function_replace_condition_with_literal(self):
         if 1 is 1:
             self.environment.append(1)
@@ -160,8 +160,22 @@ class ExampleWorkflow(object):
         for i in range(1, 3):
             self.environment.append(i)
 
+    @fuzz(filter_steps(invert(choose_last_step), replace_steps_with_passes))
+    def mangled_function_invert_filter(self):
+        self.environment.append(1)
+        self.environment.append(2)
+        self.environment.append(3)
+        return 4
 
-class FuzziMossTest(unittest.TestCase):
+    @fuzz(filter_steps(invert(invert(choose_last_step)), replace_steps_with_passes))
+    def mangled_function_invert_invert_filter(self):
+        self.environment.append(1)
+        self.environment.append(2)
+        self.environment.append(3)
+        return 4
+
+
+class FuzziMossDecoratorTest(unittest.TestCase):
 
     def setUp(self):
         self.environment = list()
@@ -255,12 +269,10 @@ class FuzziMossTest(unittest.TestCase):
     def test_replace_condition_with_function(self):
         self.target.mangled_function_replace_condition_with_function()
         self.assertEquals([2], self.environment)
-        pass
 
-    def test_replace_condition_with_function(self):
+    def test_replace_condition_with_literal(self):
         self.target.mangled_function_replace_condition_with_literal()
         self.assertEquals([2], self.environment)
-        pass
 
     def test_make_nested_fuzzing_call(self):
         self.target.make_nested_fuzzing_call()
@@ -278,6 +290,16 @@ class FuzziMossTest(unittest.TestCase):
     def test_mangled_function_excluding_control_structures(self):
         self.target.mangled_function_excluding_control_structures()
         self.assertEquals([1,2], self.environment)
+
+    def test_mangled_function_invert_filter(self):
+        result = self.target.mangled_function_invert_filter()
+        self.assertEquals(4, result)
+        self.assertEquals(self.environment, [])
+
+    def test_mangled_function_invert_invert_filter(self):
+        result = self.target.mangled_function_invert_invert_filter()
+        self.assertEquals(None, result)
+        self.assertEquals(self.environment, [1, 2, 3])
 
 
 if __name__ == '__main__':
