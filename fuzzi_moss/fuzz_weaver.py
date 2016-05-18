@@ -8,6 +8,7 @@ from core_fuzzers import *
 
 from function_fuzzer import fuzz_function
 
+
 def fuzz_clazz(clazz, advice):
 
     def __fuzzed_getattribute__(self, item):

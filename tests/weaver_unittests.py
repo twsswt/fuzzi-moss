@@ -9,10 +9,6 @@ from fuzzi_moss import *
 from fuzzi_moss import fuzz_clazz
 
 
-def bool_func():
-    return False
-
-
 class ExampleWorkflow(object):
 
     def __init__(self, environment):
@@ -54,12 +50,12 @@ class ExampleWorkflow(object):
                 self.environment.append(i)
                 if i == 2:
                     raise Exception()
-                self.append("TO BE REMOVED")
+                self.environment.append("TO BE REMOVED")
             except Exception:
                 self.environment.append(7)
                 self.environment.append(9)
-            self.append("TO BE REMOVED")
-        self.append("TO BE REMOVED")
+            self.environment.append("TO BE REMOVED")
+        self.environment.append("TO BE REMOVED")
 
     def method_containing_if_followed_by_for(self):
         if True:
@@ -146,7 +142,8 @@ class FuzziMossWeaverTest(unittest.TestCase):
         fuzzi_moss.core_fuzzers.fuzzi_moss_random.sample = Mock(side_effect=[[0], [1], [2]])
 
         test_advice = {
-            ExampleWorkflow.method_for_fuzzing: in_sequence([remove_random_step, remove_random_step, remove_random_step])
+            ExampleWorkflow.method_for_fuzzing:
+                in_sequence([remove_random_step, remove_random_step, remove_random_step])
         }
         fuzz_clazz(ExampleWorkflow, test_advice)
 
@@ -334,7 +331,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         self.assertEquals(None, result)
         self.assertEquals(self.environment, [1, 2, 3])
 
-    def test_become_distracted (self):
+    def test_become_distracted(self):
         fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
         fuzzi_moss.core_fuzzers.fuzzi_moss_random.random = Mock(side_effect=[0.75])
 

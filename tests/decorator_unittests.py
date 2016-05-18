@@ -121,7 +121,6 @@ class ExampleWorkflow(object):
         else:
             self.environment.append(2)
 
-
     @fuzz(remove_last_step)
     def make_nested_fuzzing_call(self):
         self.nested_method_call()
@@ -145,12 +144,12 @@ class ExampleWorkflow(object):
                 self.environment.append(i)
                 if i == 2:
                     raise Exception()
-                self.append("TO BE REMOVED")
+                self.environment.append("TO BE REMOVED")
             except Exception:
                 self.environment.append(7)
                 self.environment.append(9)
-            self.append("TO BE REMOVED")
-        self.append("TO BE REMOVED")
+            self.environment.append("TO BE REMOVED")
+        self.environment.append("TO BE REMOVED")
 
     @fuzz(filter_steps(exclude_control_structures({ast.For}), remove_last_step))
     def mangled_function_excluding_control_structures(self):
@@ -276,7 +275,7 @@ class FuzziMossDecoratorTest(unittest.TestCase):
 
     def test_make_nested_fuzzing_call(self):
         self.target.make_nested_fuzzing_call()
-        self.assertEquals([1,3], self.environment)
+        self.assertEquals([1, 3], self.environment)
 
     def test_replace_iterator(self):
         self.target.mangled_function_replace_iterator()
@@ -289,7 +288,7 @@ class FuzziMossDecoratorTest(unittest.TestCase):
 
     def test_mangled_function_excluding_control_structures(self):
         self.target.mangled_function_excluding_control_structures()
-        self.assertEquals([1,2], self.environment)
+        self.assertEquals([1, 2], self.environment)
 
     def test_mangled_function_invert_filter(self):
         result = self.target.mangled_function_invert_filter()

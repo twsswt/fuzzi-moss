@@ -12,6 +12,8 @@ import copy
 
 import inspect
 
+from .find_lambda import find_lambda_ast
+
 from random import Random
 
 fuzzi_moss_random = Random()
@@ -23,24 +25,24 @@ def identity(steps):
     return steps
 
 
-def filter_steps(filter=lambda steps: range(0, len(steps)), fuzzer=identity):
+def filter_steps(fuzz_filter=lambda steps: range(0, len(steps)), fuzzer=identity):
     """
     A composite fuzzer that applies the supplied fuzzer to a list of steps produced by applying the specified filter
     to the target sequence of steps.
-    :param filter: a pointer to a function that returns a list of step indices, referencing the target steps to be
+    :param fuzz_filter: a pointer to a function that returns a list of step indices, referencing the target steps to be
      fuzzed.  By default, an identity filter is applied, returning a list containing an index for each step in the
      target steps.
     :param fuzzer: the fuzzer to apply to the filtered steps.
     """
     def _filter_steps(steps):
-        regions = filter(steps)
+        regions = fuzz_filter(steps)
 
         for region in regions:
             start = region[0]
             end = region[1]
 
             filtered_steps = steps[start:end]
-            steps[start:end]=fuzzer(filtered_steps)
+            steps[start:end] = fuzzer(filtered_steps)
 
         return steps
 
@@ -51,7 +53,7 @@ def filter_steps(filter=lambda steps: range(0, len(steps)), fuzzer=identity):
 
 
 def choose_identity(steps):
-    return (0, len(steps))
+    return 0, len(steps)
 
 
 def choose_random_steps(n):
@@ -78,7 +80,7 @@ def choose_last_steps(n):
                 candidate -= 1
                 step = steps[candidate]
             selected.append((candidate, candidate + 1))
-            candidate -=1
+            candidate -= 1
 
         return selected
 
@@ -97,7 +99,7 @@ def exclude_control_structures(target=_control_structure_ast_types):
     def _exclude_control_structures(steps):
         result = list()
 
-        for i in range(0,len(steps)):
+        for i in range(0, len(steps)):
             if type(steps[i]) not in _control_structure_ast_types & target:
                 result.append((i, i+1))
 
@@ -108,7 +110,7 @@ def exclude_control_structures(target=_control_structure_ast_types):
 
 def invert(fuzz_filter):
     """
-    Inverts the application of the supplied filter.  Note that invert is symetrical, i.e.
+    Inverts the application of the supplied filter.  Note that invert is symmetrical, i.e.
     invert(invert(f)) is f.
     """
     def _invert(steps):
@@ -133,7 +135,7 @@ def invert(fuzz_filter):
 # Composite Fuzzers
 
 
-def in_sequence(sequence=[]):
+def in_sequence(sequence=()):
     """
     A composite fuzz operator that applies the supplied list of fuzz operators in sequence.
     :param sequence: the sequence of fuzz operators to apply.
@@ -149,7 +151,7 @@ def in_sequence(sequence=[]):
     return _in_sequence
 
 
-def choose_from(distribution=[(1.0, lambda x: x)]):
+def choose_from(distribution=(1.0, lambda x: x)):
     """
     A composite fuzz operator that selects a fuzz operator from the supplied probability distribution.
     :param distribution: the probability distribution from which to select a fuzz operator, represented as a sequence of
@@ -173,8 +175,9 @@ def choose_from(distribution=[(1.0, lambda x: x)]):
 
 def on_condition_that(condition, fuzzer):
     """
-    A composite fuzz operator that applies a fuzz operator if the specified condition holds.
+    A composite fuzzer that applies the supplied fuzzer if the specified condition holds.
     :param  condition:  Can either be a boolean value or a 0-ary function that returns a boolean value.
+    :param fuzzer: the fuzz operator to apply if the condition holds.
     :returns: a fuzz operator that applies the underlying fuzz operator if the specified condition is satisfied.
     """
 
@@ -213,10 +216,9 @@ def replace_condition_with(condition=False):
         elif hasattr(condition, '__call__'):
 
             if condition.func_name == '<lambda>':
-                containing_string = inspect.getsourcelines(condition)[0][0].strip()
-                fuzzer_string = containing_string[containing_string.index(':')+1:].strip()
-                lambda_string = fuzzer_string[23:-1]
-                func_ast = ast.parse(lambda_string).body[0].value
+
+                containing_string = inspect.getsource(condition).strip()
+                func_ast = find_lambda_ast(containing_string, condition).value
 
             else:
                 func_ast = ast.Name(
@@ -225,7 +227,6 @@ def replace_condition_with(condition=False):
                     col_offset=step.col_offset,
                     ctx=ast.Load()
                 )
-
             return ast.Call(func=func_ast, col_offset=step.col_offset, lineno=step.lineno, args=list(), keywords=list())
 
         elif type(condition) is bool:
@@ -245,7 +246,7 @@ def replace_condition_with(condition=False):
     return _replace_condition
 
 
-def replace_for_iterator_with(replacement=[]):
+def replace_for_iterator_with(replacement=()):
     """
     A composite fuzzer that replaces iterable expressions with the supplied iterable.  The function currently only
     supports lists of numbers and string literals.
@@ -359,7 +360,7 @@ def duplicate_last_step(steps):
 # Socio-technical fuzzers.
 
 
-def become_distracted (distribution=lambda p: 1):
+def become_distracted(distribution=lambda p: 1):
     """
     Creates a fuzzer that removes a random number of lines of code from the end of the fuzzed workflow.  The number
     of lines removed is determined by the supplied distribution function.
