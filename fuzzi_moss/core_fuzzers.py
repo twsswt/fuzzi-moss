@@ -201,9 +201,13 @@ def replace_condition_with(condition=False):
     :param condition: The supplied condition that will be converted into a Python AST boolean expression. The condition
     can be supplied as a:
 
-      * string boolean expression, such as '1==2'
+      * a lambda expression, *provided that* the expression is defined in a single line of code and is enclosed in
+        brackets, for example (lambda: False)
       * a function reference
-      * a lambda expression, *provided that* the expression is defined in a single line of code.
+      * string boolean expression, such as '1==2'
+
+    in order of preferred use.
+
     """
 
     def build_replacement(step):
