@@ -3,7 +3,7 @@
 @author twsswt
 """
 import fuzzi_moss
-from function_fuzzer import fuzz_function
+from fuzz_weaver import fuzz_function
 
 
 # noinspection PyPep8Naming
