@@ -28,7 +28,6 @@ def find_lambda_ast(source_line, lambda_object):
     :param lambda_object: the compiled representation of the lambda expression.
     :return : An AST representation of the lambda expression.
     """
-    result = list()
     offset = 0
     while True:
         candidate_object, candidate_source, offset = find_candidate_object(offset, source_line)

@@ -16,40 +16,18 @@ from .find_lambda import find_lambda_ast
 
 from random import Random
 
+
 fuzzi_moss_random = Random()
 
-# Template fuzzers and associated default identity functions.
+
+# Identity fuzzer.
 
 
 def identity(steps):
     return steps
 
 
-def filter_steps(fuzz_filter=lambda steps: range(0, len(steps)), fuzzer=identity):
-    """
-    A composite fuzzer that applies the supplied fuzzer to a list of steps produced by applying the specified filter
-    to the target sequence of steps.
-    :param fuzz_filter: a pointer to a function that returns a list of step indices, referencing the target steps to be
-     fuzzed.  By default, an identity filter is applied, returning a list containing an index for each step in the
-     target steps.
-    :param fuzzer: the fuzzer to apply to the filtered steps.
-    """
-    def _filter_steps(steps):
-        regions = fuzz_filter(steps)
-
-        for region in regions:
-            start = region[0]
-            end = region[1]
-
-            filtered_steps = steps[start:end]
-            steps[start:end] = fuzzer(filtered_steps)
-
-        return steps
-
-    return _filter_steps
-
-
-# #Step Filtering Functions.
+# Step Filtering Functions.
 
 
 def choose_identity(steps):
@@ -118,7 +96,6 @@ def invert(fuzz_filter):
         inverted = list()
 
         start = 0
-        end = -1
         for block in original:
             end = block[0]
             inverted.append((start, end))
@@ -133,6 +110,30 @@ def invert(fuzz_filter):
 
 
 # Composite Fuzzers
+
+
+def filter_steps(fuzz_filter=choose_identity, fuzzer=identity):
+    """
+    A composite fuzzer that applies the supplied fuzzer to a list of steps produced by applying the specified filter
+    to the target sequence of steps.
+    :param fuzz_filter: a pointer to a function that returns a list of step indices, referencing the target steps to be
+     fuzzed.  By default, an identity filter is applied, returning a list containing an index for each step in the
+     target steps.
+    :param fuzzer: the fuzzer to apply to the filtered steps.
+    """
+    def _filter_steps(steps):
+        regions = fuzz_filter(steps)
+
+        for region in regions:
+            start = region[0]
+            end = region[1]
+
+            filtered_steps = steps[start:end]
+            steps[start:end] = fuzzer(filtered_steps)
+
+        return steps
+
+    return _filter_steps
 
 
 def in_sequence(sequence=()):
@@ -339,10 +340,6 @@ def swap_if_blocks(steps):
 
 def remove_last_steps(n):
     fuzzer = filter_steps(choose_last_steps(n), replace_steps_with_passes)
-
-    def _remove_last_steps(steps):
-        return fuzzer(steps)
-
     return fuzzer
 
 
