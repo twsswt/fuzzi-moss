@@ -62,8 +62,10 @@ def fuzz_clazz(clazz, advice):
 
             # Ensure that advice key is unbound method.
             advice_key = getattr(attribute.im_class, attribute.func_name)
-            fuzzer = advice[advice_key]
 
+            # If no advice is specified then apply the identity fuzzer to ensure that the function is reset if it has
+            #  been previously fuzzed.
+            fuzzer = advice.get(advice_key, identity)
             fuzz_function(reference_function, fuzzer)
 
             # Execute the mutated function.
