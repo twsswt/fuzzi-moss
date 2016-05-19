@@ -31,7 +31,7 @@ def identity(steps):
 
 
 def choose_identity(steps):
-    return 0, len(steps)
+    return [(0, len(steps))]
 
 
 def choose_random_steps(n):
