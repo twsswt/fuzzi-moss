@@ -47,31 +47,44 @@ def fuzz_clazz(clazz, advice):
     """
     Applies fuzzers specified in the supplied advice dictionary to methods in supplied class.
     :param clazz : the class to fuzz.
-    :param advice : the dictionary of method->fuzzer mappings to apply.
+    :param advice : the dictionary of method->fuzzer mappings to apply.  If no fuzzer is specified for a function then
+    the identity fuzzer is applied in case the method has been previously fuzzed.
     """
     def __fuzzed_getattribute__(self, item):
 
         attribute = object.__getattribute__(self, item)
 
-        if not (inspect.ismethod(attribute) or inspect.isfunction(attribute)):
+        if inspect.ismethod(attribute):
+
+            def wrap(*args, **kwargs):
+
+                reference_method = attribute.im_func
+                # Ensure that advice key is unbound method for instance methods.
+                advice_key = getattr(attribute.im_class, attribute.func_name)
+
+                fuzzer = advice.get(advice_key, identity)
+                fuzz_function(reference_method, fuzzer)
+
+                # Execute the mutated method.
+                return reference_method(self, *args, **kwargs)
+
+            return wrap
+
+        elif inspect.isfunction(attribute):
+
+            def wrap(*args, **kwargs):
+
+                reference_function = attribute
+
+                fuzzer = advice.get(reference_function, identity)
+                fuzz_function(reference_function, fuzzer)
+
+                # Execute the mutated function.
+                return reference_function(*args, **kwargs)
+
+            return wrap
+        else:
             return attribute
-
-        def wrap(*args, **kwargs):
-
-            reference_function = attribute.im_func
-
-            # Ensure that advice key is unbound method.
-            advice_key = getattr(attribute.im_class, attribute.func_name)
-
-            # If no advice is specified then apply the identity fuzzer to ensure that the function is reset if it has
-            #  been previously fuzzed.
-            fuzzer = advice.get(advice_key, identity)
-            fuzz_function(reference_function, fuzzer)
-
-            # Execute the mutated function.
-            return reference_function(self, *args, **kwargs)
-
-        return wrap
 
     clazz.__getattribute__ = __fuzzed_getattribute__
 
@@ -83,6 +96,6 @@ def fuzz_module(mod, advice):
     :param mod : the module to fuzz.
     :param advice : the dictionary of method->fuzzer mappings to apply.
     """
-    for label, member in getmembers(mod):
+    for _, member in getmembers(mod):
         if inspect.isclass(member):
             fuzz_clazz(member, advice)

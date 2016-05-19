@@ -55,3 +55,7 @@ class ExampleWorkflow(object):
 
         for i in range(1, 3):
             self.environment.append(i)
+
+    @staticmethod
+    def example_class_method():
+        return 1

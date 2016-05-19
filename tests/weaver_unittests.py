@@ -277,6 +277,16 @@ class FuzziMossWeaverTest(unittest.TestCase):
         self.assertEquals(None, result)
         self.assertEquals(self.environment, [1, 2, 3])
 
+    def test_fuzzing_class_method(self):
+        test_advice = {
+            ExampleWorkflow.example_class_method:
+                remove_last_step
+        }
+        fuzz_module(example_workflow, test_advice)
+
+        result = self.target.example_class_method()
+        self.assertEquals(None, result)
+
     def test_become_distracted(self):
         fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
         fuzzi_moss.core_fuzzers.fuzzi_moss_random.random = Mock(side_effect=[0.75])
@@ -288,6 +298,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
 
         self.target.method_for_fuzzing()
         self.assertEquals(self.environment, [1])
+
 
 if __name__ == '__main__':
     unittest.main()
