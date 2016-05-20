@@ -8,8 +8,10 @@ import unittest
 from mock import Mock
 
 from fuzzi_moss import *
+import fuzzi_moss
 
-fuzzi_moss.enable_fuzzings = True
+
+fuzz.enable_fuzzings = True
 
 
 def bool_func():
