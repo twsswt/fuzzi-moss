@@ -76,9 +76,42 @@ Fuzzers are also under development to represent high level cognitive behaviours 
 
 ## Tutorial
 
-Consider the following Python class representing a collection of simple workflow descriptions.
+###Basic usage
 
+Consider the following Python class representing a collection of simple workflow descriptions defined in a separate
+source file.
 
+    class TutorialWorkflow(object):
+        def __init__(self):
+            self.environment = list()
 
-A fuzzed work flow can be executed as a normal python program.
+        def an_activity(self):
+            self.environment.append(1)
+            self.environment.append(2)
+            self.environment.append(3)
 
+We can fuzz the workflow to have a randomly chosen removed line as follows.
+
+    from fuzzi_moss import *
+    from tutorial import TutorialWorkflow
+
+    advice = {
+        TutorialWorkflow.an_activity: remove_random_step
+    }
+    fuzz_clazz(ExampleWorkflow, advice)
+
+The advice dictionary maps the function pointer to the remove_random_step fuzzer.  The fuzz_clazz operation then applies
+this advice to the whole ExampleWorkflow class.
+
+Now we can use the fuzzed class as normal.
+
+    workflow = ExampleWorkflow()
+    workflow.activity()
+    print workflow.environment
+    workflow.activity()
+    print workflow.environment
+
+Output:
+
+Note that the fuzzer will be re-applied each time the fuzzed function is called meaning that in this case a different
+step can be removed from the workflow on each invocation.
