@@ -4,9 +4,8 @@ core fuzzers library.
 @author twsswt
 """
 
-
-from core_fuzzers import *
-
+from core_fuzzers import remove_last_steps
+import fuzzi_moss.core_fuzzers
 
 def become_distracted(distribution=lambda p: 1):
     """
@@ -19,7 +18,8 @@ def become_distracted(distribution=lambda p: 1):
     """
 
     def _become_distracted(steps):
-        fuzzer = remove_last_steps(distribution(fuzzi_moss_random.random()))
+        p = fuzzi_moss.core_fuzzers.fuzzi_moss_random.random()
+        fuzzer = remove_last_steps(distribution(p))
         return fuzzer(steps)
 
     return _become_distracted
