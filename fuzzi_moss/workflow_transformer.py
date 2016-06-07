@@ -7,8 +7,6 @@ import ast
 
 class WorkflowTransformer(ast.NodeTransformer):
 
-    _functions_visited = 0
-
     def __init__(self, fuzzer=lambda x: x, strip_decorators=True):
         """
         :param fuzzer: a function that takes a list of strings (lines of program code) and returns another
@@ -23,7 +21,6 @@ class WorkflowTransformer(ast.NodeTransformer):
     def visit_FunctionDef(self, node):
         """
         Applies this visitor's mutation operator to the body of the supplied node.
-        NOTE: This will work differently depending on whether the decorator takes arguments.
         """
 
         # Renaming is necessary so that we don't overwrite Python's object caching.
@@ -34,6 +31,5 @@ class WorkflowTransformer(ast.NodeTransformer):
 
         node.body = self.fuzzer(node.body)
 
-        # Now that we've mutated, increment the necessary counters and parse the rest of the tree we're given.
-        WorkflowTransformer._functions_visited += 1
+        # Now that we've mutated, visit the rest of the tree we're given.
         return self.generic_visit(node)
