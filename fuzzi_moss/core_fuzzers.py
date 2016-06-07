@@ -20,10 +20,12 @@ from random import Random
 fuzzi_moss_random = Random()
 
 
-# Identity fuzzer.
-
-
 def identity(steps):
+    """
+    The identity fuzzer.
+    :param steps:
+    :return:
+    """
     return steps
 
 
@@ -70,15 +72,15 @@ def choose_last_step(steps):
     return func(steps)
 
 
-_control_structure_ast_types = {ast.For, ast.If, ast.TryExcept, ast.While, ast.Return}
+_ast_control_structure_types = {ast.For, ast.If, ast.TryExcept, ast.While, ast.Return}
 
 
-def exclude_control_structures(target=_control_structure_ast_types):
+def exclude_control_structures(target=_ast_control_structure_types):
     def _exclude_control_structures(steps):
         result = list()
 
         for i in range(0, len(steps)):
-            if type(steps[i]) not in _control_structure_ast_types & target:
+            if type(steps[i]) not in _ast_control_structure_types & target:
                 result.append((i, i+1))
 
         return result
@@ -196,9 +198,34 @@ def on_condition_that(condition, fuzzer):
     return _on_condition_that
 
 
+def recurse_into_nested_steps(fuzzer=identity, target_structures={ast.For, ast.TryExcept, ast.While, ast.If}):
+    """
+    A composite fuzzer that applies the supplied fuzzer recursively to bodies of control statements (For, While,
+    TryExcept and If).  Recursion is applied at the head, i.e. the fuzzer supplied is applied to the parent block last.
+    """
+
+    def _recurse_into_nested_steps(steps):
+        for step in steps:
+            if type(step) in {ast.For, ast.While} & target_structures:
+                step.body = _recurse_into_nested_steps(step.body)
+            elif type(step) in {ast.If} & target_structures:
+                step.body = _recurse_into_nested_steps(step.body)
+                step.orelse = _recurse_into_nested_steps(step.orelse)
+            elif type(step) in {ast.TryExcept} & target_structures:
+                step.body = _recurse_into_nested_steps(step.body)
+                for handler in step.handlers:
+                    _recurse_into_nested_steps(handler.body)
+        return fuzzer(steps)
+
+    return _recurse_into_nested_steps
+
+
+# Atomic Fuzzers.
+
+
 def replace_condition_with(condition=False):
     """
-    A composite fuzzer that replaces conditions with the supplied condition.
+    An atomic fuzzer that replaces conditions with the supplied condition.
     :param condition: The supplied condition that will be converted into a Python AST boolean expression. The condition
     can be supplied as a:
 
@@ -253,7 +280,7 @@ def replace_condition_with(condition=False):
 
 def replace_for_iterator_with(replacement=()):
     """
-    A composite fuzzer that replaces iterable expressions with the supplied iterable.  The function currently only
+    An atomic fuzzer that replaces iterable expressions with the supplied iterable.  The function currently only
     supports lists of numbers and string literals.
     """
 
@@ -282,31 +309,6 @@ def replace_for_iterator_with(replacement=()):
         return steps
 
     return _replace_iterator_with
-
-
-def recurse_into_nested_steps(fuzzer=identity, target_structures={ast.For, ast.TryExcept, ast.While, ast.If}):
-    """
-    A composite fuzzer that applies the supplied fuzzer recursively to bodies of control statements (For, While,
-    TryExcept and If).  Recursion is applied at the head, i.e. the fuzzer supplied is applied to the parent block last.
-    """
-
-    def _recurse_into_nested_steps(steps):
-        for step in steps:
-            if type(step) in {ast.For, ast.While} & target_structures:
-                step.body = _recurse_into_nested_steps(step.body)
-            elif type(step) in {ast.If} & target_structures:
-                step.body = _recurse_into_nested_steps(step.body)
-                step.orelse = _recurse_into_nested_steps(step.orelse)
-            elif type(step) in {ast.TryExcept} & target_structures:
-                step.body = _recurse_into_nested_steps(step.body)
-                for handler in step.handlers:
-                    _recurse_into_nested_steps(handler.body)
-        return fuzzer(steps)
-
-    return _recurse_into_nested_steps
-
-
-# Atomic Fuzzers.
 
 
 def _replace_step_with_pass(step):
@@ -357,30 +359,3 @@ def duplicate_last_step(steps):
     fuzzer = filter_steps(choose_last_step, duplicate_steps)
     return fuzzer(steps)
 
-
-# Socio-technical fuzzers.
-
-
-def become_distracted(distribution=lambda p: 1):
-    """
-    Creates a fuzzer that removes a random number of lines of code from the end of the fuzzed workflow.  The number
-    of lines removed is determined by the supplied distribution function.
-
-    :param distribution:  A function that accepts a probability (0.0 <= p <= 1.0) and returns an integer number of
-    lines to be removed.
-    :return: the underlying fuzzer.
-    """
-
-    def _become_distracted(steps):
-        fuzzer = remove_last_steps(distribution(fuzzi_moss_random.random()))
-        return fuzzer(steps)
-
-    return _become_distracted
-
-
-def decision_mistake():
-    pass
-
-
-def become_muddled():
-    pass
