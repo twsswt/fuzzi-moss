@@ -13,11 +13,26 @@ import copy
 import inspect
 
 from .find_lambda import find_lambda_ast
+from .config import fuzzi_moss_random
 
-from random import Random
+# Logging management routines for fuzzer invocations.
 
 
-fuzzi_moss_random = Random()
+fuzzer_invocations = dict()
+
+
+def reset_invocation_counters():
+    global fuzzer_invocations
+    fuzzer_invocations = dict()
+
+
+def log_invocation(func):
+    def func_wrapper(*args, **kwargs):
+        fuzzer_invocations[func] = fuzzer_invocations.get(func,0) + 1
+        return func(*args,**kwargs)
+    return func_wrapper
+
+
 
 
 def identity(steps):
@@ -223,6 +238,7 @@ def recurse_into_nested_steps(fuzzer=identity, target_structures={ast.For, ast.T
 # Atomic Fuzzers.
 
 
+@log_invocation
 def replace_condition_with(condition=False):
     """
     An atomic fuzzer that replaces conditions with the supplied condition.
@@ -278,6 +294,7 @@ def replace_condition_with(condition=False):
     return _replace_condition
 
 
+@log_invocation
 def replace_for_iterator_with(replacement=()):
     """
     An atomic fuzzer that replaces iterable expressions with the supplied iterable.  The function currently only
@@ -311,6 +328,7 @@ def replace_for_iterator_with(replacement=()):
     return _replace_iterator_with
 
 
+@log_invocation
 def _replace_step_with_pass(step):
     return ast.Pass(lineno=step.lineno, col_offset=step.lineno)
 
@@ -319,14 +337,17 @@ def replace_steps_with_passes(steps):
     return [_replace_step_with_pass(step) for step in steps]
 
 
+@log_invocation
 def duplicate_steps(steps):
     return steps + copy.deepcopy(steps)
 
 
+@log_invocation
 def shuffle_steps(steps):
     return fuzzi_moss_random.shuffle(steps)
 
 
+@log_invocation
 def swap_if_blocks(steps):
     for step in steps:
         if type(step) is If:
@@ -358,4 +379,3 @@ def remove_random_step(steps):
 def duplicate_last_step(steps):
     fuzzer = filter_steps(choose_last_step, duplicate_steps)
     return fuzzer(steps)
-

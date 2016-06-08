@@ -2,13 +2,14 @@ import unittest
 
 from mock import Mock
 
-import fuzzi_moss
+import fuzzi_moss as fm
 
-from fuzzi_moss import *
-
-import example_workflow
+from fuzzi_moss.core_fuzzers import *
+from fuzzi_moss.sociotech_fuzzers import *
 
 from example_workflow import ExampleWorkflow
+
+from random import Random
 
 
 class FuzziMossWeaverTest(unittest.TestCase):
@@ -22,7 +23,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: identity
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEquals([1, 2, 3], self.environment)
@@ -32,7 +33,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: remove_last_step
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEqual([1, 2], self.environment)
@@ -42,7 +43,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: remove_last_step
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.target.method_for_fuzzing()
@@ -53,45 +54,42 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: duplicate_last_step
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEqual([1, 2, 3, 3], self.environment)
 
     def test_remove_random_step(self):
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random.sample = Mock(side_effect=[[1]])
+        fm.fuzzi_moss_random.sample = Mock(side_effect=[[1]])
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: remove_random_step
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEqual([1, 3], self.environment)
 
     def test_remove__random_step_twice(self):
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random.sample = Mock(side_effect=[[1], [2]])
+        fm.fuzzi_moss_random.sample = Mock(side_effect=[[1], [2]])
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: remove_random_step
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.target.method_for_fuzzing()
         self.assertEqual([1, 3, 1, 2], self.environment)
 
     def test_replace_all_steps_with_pass_in_random_sequence(self):
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random.sample = Mock(side_effect=[[0], [1], [2]])
+        fm.fuzzi_moss_random.sample = Mock(side_effect=[[0], [1], [2]])
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing:
                 in_sequence([remove_random_step, remove_random_step, remove_random_step])
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEqual([], self.environment)
@@ -101,7 +99,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: in_sequence([remove_last_step, remove_last_step, remove_last_step])
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEqual([], self.environment)
@@ -114,14 +112,13 @@ class FuzziMossWeaverTest(unittest.TestCase):
             result.append(iterable[1])
             return result
 
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random.shuffle = Mock(side_effect=mock_random_shuffle)
+        fm.fuzzi_moss_random.shuffle = Mock(side_effect=mock_random_shuffle)
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: shuffle_steps
         }
 
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEqual([3, 1, 2], self.environment)
@@ -131,19 +128,18 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_containing_if: swap_if_blocks
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_containing_if()
         self.assertEqual([2], self.environment)
 
     def test_choose_from(self):
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random.uniform = Mock(side_effect=[0.75, 0.75])
+        fm.fuzzi_moss_random.uniform = Mock(side_effect=[0.75, 0.75])
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: choose_from([(0.5, identity), (0.5, remove_last_step)])
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.target.method_for_fuzzing()
@@ -154,7 +150,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: in_sequence([remove_last_step, remove_last_step])
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEqual([1], self.environment)
@@ -164,7 +160,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: on_condition_that(True, remove_last_step)
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEqual([1, 2], self.environment)
@@ -174,7 +170,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: on_condition_that(lambda: False, remove_last_step)
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEqual([1, 2, 3], self.environment)
@@ -184,7 +180,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_containing_if: replace_condition_with('1 is 2')
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_containing_if()
         self.assertEquals([2], self.environment)
@@ -194,7 +190,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_containing_if: replace_condition_with(lambda: False)
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_containing_if()
         self.assertEquals([2], self.environment)
@@ -204,7 +200,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_containing_if: replace_condition_with(False)
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_containing_if()
         self.assertEquals([2], self.environment)
@@ -216,7 +212,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
             ExampleWorkflow.make_nested_fuzzing_call: remove_last_step,
             ExampleWorkflow.nested_method_call: remove_last_step
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.make_nested_fuzzing_call()
         self.assertEquals([1, 3], self.environment)
@@ -226,7 +222,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         test_advice = {
             ExampleWorkflow.method_containing_iterator:  replace_for_iterator_with([3, 2, 1])
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_containing_iterator()
         self.assertEquals([3, 2, 1], self.environment)
@@ -237,7 +233,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
             ExampleWorkflow.method_containing_for_and_nested_try:
                 recurse_into_nested_steps(remove_last_step, target_structures={ast.For, ast.TryExcept})
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_containing_for_and_nested_try()
         self.assertEquals([0, 1, 2, 7], self.environment)
@@ -249,7 +245,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
             ExampleWorkflow.method_containing_if_followed_by_for:
                 filter_steps(exclude_control_structures({ast.For}), remove_last_step)
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_containing_if_followed_by_for()
         self.assertEquals([1, 2], self.environment)
@@ -260,7 +256,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
             ExampleWorkflow.method_for_fuzzing_that_returns_4:
                 filter_steps(invert(choose_last_step), replace_steps_with_passes)
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         result = self.target.method_for_fuzzing_that_returns_4()
         self.assertEquals(4, result)
@@ -271,7 +267,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
             ExampleWorkflow.method_for_fuzzing_that_returns_4:
                 filter_steps(invert(invert(choose_last_step)), replace_steps_with_passes)
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         result = self.target.method_for_fuzzing_that_returns_4()
         self.assertEquals(None, result)
@@ -282,19 +278,20 @@ class FuzziMossWeaverTest(unittest.TestCase):
             ExampleWorkflow.example_class_method:
                 remove_last_step
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         result = self.target.example_class_method()
         self.assertEquals(None, result)
 
     def test_become_distracted(self):
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random = Mock(spec=Random)
-        fuzzi_moss.core_fuzzers.fuzzi_moss_random.random = Mock(side_effect=[0.75])
+        #fuzzi_moss_random = Mock(spec=Random)
+        fm.fuzzi_moss_random.random = Mock(side_effect=[0.75])
+        #fm.set_fuzzi_moss_random(fuzzi_moss_random)
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: become_distracted(lambda p: 1 if p < 0.5 else 2)
         }
-        fuzz_module(example_workflow, test_advice)
+        fm.fuzz_clazz(ExampleWorkflow, test_advice)
 
         self.target.method_for_fuzzing()
         self.assertEquals(self.environment, [1])
