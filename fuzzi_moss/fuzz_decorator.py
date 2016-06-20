@@ -7,6 +7,8 @@ from core_fuzzers import identity
 
 from fuzz_weaver import fuzz_function
 
+from fuzz_formats import sequential
+
 
 # noinspection PyPep8Naming
 class fuzz(object):
@@ -19,7 +21,7 @@ class fuzz(object):
 
     enable_fuzzings = False
 
-    def __init__(self, fuzzer=identity):
+    def __init__(self, fuzzer=identity, format=sequential):
         self.fuzzer = fuzzer
         self._original_syntax_tree = None
 

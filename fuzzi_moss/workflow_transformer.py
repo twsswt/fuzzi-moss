@@ -3,11 +3,12 @@
 @author twsswt
 """
 import ast
+from fuzz_formats import sequential
 
 
 class WorkflowTransformer(ast.NodeTransformer):
 
-    def __init__(self, fuzzer=lambda x: x, strip_decorators=True):
+    def __init__(self, fuzzer=lambda x: x, strip_decorators=True, format=sequential):
         """
         :param fuzzer: a function that takes a list of strings (lines of program code) and returns another
         list of lines.
@@ -17,6 +18,7 @@ class WorkflowTransformer(ast.NodeTransformer):
 
         self.strip_decorators = strip_decorators
         self.fuzzer = fuzzer
+        self.format = format
 
     def visit_FunctionDef(self, node):
         """
@@ -29,6 +31,7 @@ class WorkflowTransformer(ast.NodeTransformer):
         if self.strip_decorators:
             node.decorator_list = []
 
+        node.body = self.format(node.body)  # Should this happen before or after the fuzzing?
         node.body = self.fuzzer(node.body)
 
         # Now that we've mutated, visit the rest of the tree we're given.
