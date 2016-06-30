@@ -12,27 +12,9 @@ import copy
 
 import inspect
 
+from .audit import log_invocation
 from .find_lambda import find_lambda_ast
 from .config import fuzzi_moss_random
-
-# Logging management routines for fuzzer invocations.
-
-
-fuzzer_invocations = dict()
-
-
-def reset_invocation_counters():
-    global fuzzer_invocations
-    fuzzer_invocations = dict()
-
-
-def log_invocation(func):
-    def func_wrapper(*args, **kwargs):
-        fuzzer_invocations[func] = fuzzer_invocations.get(func,0) + 1
-        return func(*args,**kwargs)
-    return func_wrapper
-
-
 
 
 def identity(steps):
@@ -93,11 +75,15 @@ _ast_control_structure_types = {ast.For, ast.If, ast.TryExcept, ast.While, ast.R
 def exclude_control_structures(target=_ast_control_structure_types):
     def _exclude_control_structures(steps):
         result = list()
+        region_start = 0
+        region_end = 0
+        while region_end < len(steps):
+            while region_end < len(steps) and type(steps[region_end]) not in _ast_control_structure_types & target:
+                region_end += 1
 
-        for i in range(0, len(steps)):
-            if type(steps[i]) not in _ast_control_structure_types & target:
-                result.append((i, i+1))
-
+            result.append((region_start, region_end))
+            region_start = region_end + 1
+            region_end = region_start
         return result
 
     return _exclude_control_structures
@@ -238,7 +224,6 @@ def recurse_into_nested_steps(fuzzer=identity, target_structures={ast.For, ast.T
 # Atomic Fuzzers.
 
 
-@log_invocation
 def replace_condition_with(condition=False):
     """
     An atomic fuzzer that replaces conditions with the supplied condition.
@@ -254,7 +239,8 @@ def replace_condition_with(condition=False):
 
     """
 
-    def build_replacement(step):
+    @log_invocation
+    def _replace_condition(step):
 
         if type(condition) is str:
 
@@ -285,22 +271,22 @@ def replace_condition_with(condition=False):
                 ctx=ast.Load()
             )
 
-    def _replace_condition(steps):
+    def _replace_conditions(steps):
         for step in steps:
             if type(step) is If or type(step) is While:
-                step.test = build_replacement(step)
+                step.test = _replace_condition(step)
         return steps
 
-    return _replace_condition
+    return _replace_conditions
 
 
-@log_invocation
 def replace_for_iterator_with(replacement=()):
     """
     An atomic fuzzer that replaces iterable expressions with the supplied iterable.  The function currently only
     supports lists of numbers and string literals.
     """
 
+    @log_invocation
     def _replace_iterator_with(steps):
         for step in steps:
             if type(step) is ast.For:

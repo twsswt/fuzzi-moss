@@ -32,7 +32,6 @@ def find_lambda_ast(source_line, lambda_object):
     offset = 0
     while True:
         candidate_object, candidate_source, offset = find_candidate_object(offset, source_line)
-
         if candidate_object.co_code == lambda_object.func_code.co_code:
             if candidate_object.co_names == lambda_object.func_code.co_names:
                 return ast.parse(candidate_source).body[0]

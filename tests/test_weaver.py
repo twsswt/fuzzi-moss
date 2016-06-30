@@ -9,8 +9,6 @@ from fuzzi_moss.sociotech_fuzzers import *
 
 from example_workflow import ExampleWorkflow
 
-from random import Random
-
 
 class FuzziMossWeaverTest(unittest.TestCase):
 
