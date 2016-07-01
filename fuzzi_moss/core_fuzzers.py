@@ -365,3 +365,18 @@ def remove_random_step(steps):
 def duplicate_last_step(steps):
     fuzzer = filter_steps(choose_last_step, duplicate_steps)
     return fuzzer(steps)
+
+
+# Experimental Fuzzers
+
+
+def insert_steps(new_steps=['pass'], lineno=0):
+
+    def _insert_steps(steps):
+        parsed_ast = ast.parse('\n'.join(new_steps))
+        steps[lineno:lineno] = parsed_ast.body
+        return steps
+
+    return _insert_steps
+
+
