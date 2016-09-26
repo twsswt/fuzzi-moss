@@ -370,13 +370,11 @@ def duplicate_last_step(steps):
 # Experimental Fuzzers
 
 
-def insert_steps(new_steps=['pass'], lineno=0):
+def insert_steps(new_steps=['pass'], line_number=0):
 
     def _insert_steps(steps):
         parsed_ast = ast.parse('\n'.join(new_steps))
-        steps[lineno:lineno] = parsed_ast.body
+        steps[line_number:line_number] = parsed_ast.body
         return steps
 
     return _insert_steps
-
-
