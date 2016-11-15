@@ -4,9 +4,9 @@ core fuzzers library.
 @author twsswt
 """
 
-from .core_fuzzers import remove_last_steps
+from pydysofu.core_fuzzers import remove_last_steps
 
-from config import fuzzi_moss_random
+from pydysofu.config import fuzzi_moss_random
 
 
 def become_distracted(distribution=lambda p: 1):
