@@ -15,7 +15,7 @@ class FuzziMossWeaverTest(unittest.TestCase):
         self.target = ExampleWorkflow(self.environment)
 
     def test_become_distracted(self):
-        pydysofu.fuzzi_moss_random.random = Mock(side_effect=[0.75])
+        pydysofu.pydysofu_random.random = Mock(side_effect=[0.75])
 
         test_advice = {
             ExampleWorkflow.method_for_fuzzing: become_distracted(lambda p: 1 if p < 0.5 else 2)
