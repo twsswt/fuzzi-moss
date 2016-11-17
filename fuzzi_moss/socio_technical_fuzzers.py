@@ -8,8 +8,6 @@ from pydysofu.core_fuzzers import *
 
 from pydysofu.config import pydysofu_random
 
-from random import Random
-
 
 def incomplete_procedure(distribution=lambda p: 1):
     """
@@ -26,14 +24,6 @@ def incomplete_procedure(distribution=lambda p: 1):
         return fuzzer(steps)
 
     return _incomplete_procedure
-
-
-def decision_mistake(p=0.0):
-    pass
-
-
-def become_muddled():
-    pass
 
 
 def _default_distraction_pd(duration):
@@ -103,3 +93,14 @@ def missed_target(clock, random, distraction_pd=_default_distraction_pd):
         return fuzzer(steps)
 
     return _insufficient_effort
+
+
+def decision_mistake():
+    # TODO
+    pass
+
+
+def become_muddled():
+    # TODO
+    pass
+

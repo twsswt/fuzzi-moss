@@ -2,6 +2,8 @@ import unittest
 
 from mock import Mock, PropertyMock, patch
 
+from random import Random
+
 from theatre_ag import Actor, SynchronizingClock
 
 import pydysofu
