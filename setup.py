@@ -15,5 +15,5 @@ setup(
     description='Fuzzing for Modelling Variance in Socio-technical Systems',
     setup_requires=['nose', 'pydysofu', 'theatre_ag'],
     test_suite='nose.collector',
-    tests_require=['mock', 'nose']
+    tests_require=['mock', 'nose', 'nose_parameterized']
 )

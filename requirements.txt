@@ -1,4 +1,5 @@
 mock
 nose
+noseparameterized
 theatre_ag
 pydysofu
