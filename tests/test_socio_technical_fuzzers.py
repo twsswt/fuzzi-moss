@@ -48,7 +48,8 @@ class FuzziMossWeaverTest(unittest.TestCase):
             patched_clock = SynchronizingClock()
 
             test_advice = {
-                ExampleWorkflow.method_that_targets_a_goal: missed_target(patched_clock, mock_random)
+                ExampleWorkflow.method_that_targets_a_goal:
+                    missed_target(patched_clock, missed_target_distribution(mock_random, 2))
             }
 
             pydysofu.fuzz_clazz(ExampleWorkflow, test_advice)

@@ -12,6 +12,6 @@ class ExampleWorkflow(object):
         self.environment.append(3)
 
     def method_that_targets_a_goal(self):
-
-        while len(self.environment) < 5:
-            self.environment.append(1)
+        for _ in range (0, 1):
+            while len(self.environment) < 5:
+                self.environment.append(1)

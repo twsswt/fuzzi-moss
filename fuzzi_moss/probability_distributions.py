@@ -18,3 +18,13 @@ def steps_to_remove_distribution(clock, random):
         return n - 1
 
     return _probability_distribution
+
+
+def missed_target_distribution(random, conscientiousness=1):
+
+    def _probability_distribution(duration):
+        probability = random.uniform(0.0, 1.0)
+        threshold = 1.0 / (duration + 1) ** (1.0 / conscientiousness)
+        return probability < threshold
+
+    return _probability_distribution
