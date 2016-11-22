@@ -51,8 +51,7 @@ def missed_target(clock, distraction_pd=lambda p, d: True):
         'if not fuzzi_moss.socio_technical_fuzzers.simulation_clock_trackers[%d].test_condition() : break' % index
 
     def _insufficient_effort(steps):
-        fuzzer = \
-         in_sequence(
+        fuzzer = in_sequence(
             [
                 insert_steps(0, import_insertion),
                 recurse_into_nested_steps(
