@@ -6,6 +6,19 @@ core fuzzers library.
 
 from pydysofu.core_fuzzers import *
 
+from theatre_ag import get_actor_for_workflow
+
+
+def workflow_actors_name_is(name):
+
+    def _workflow_actors_name_is(workflow):
+
+        actor = get_actor_for_workflow(workflow)
+
+        return False if actor is None else actor.name == name
+
+    return _workflow_actors_name_is
+
 
 simulation_clock_trackers = list()
 

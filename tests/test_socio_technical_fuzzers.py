@@ -7,6 +7,7 @@ from random import Random
 from theatre_ag import SynchronizingClock
 
 import pydysofu
+
 from fuzzi_moss.socio_technical_fuzzers import *
 from fuzzi_moss.probability_distributions import *
 
@@ -39,17 +40,25 @@ class FuzziMossWeaverTest(unittest.TestCase):
 
     def test_missed_target(self):
 
-        with patch('theatre_ag.SynchronizingClock.current_tick', new_callable=PropertyMock) as current_tick_mock:
+        with \
+                patch('theatre_ag.SynchronizingClock.current_tick', new_callable=PropertyMock) as current_tick_mock:
+
             current_tick_mock.side_effect = [1, 1, 2, 3, 4, 5, 6]
+
+            workflow_actors_name_is = Mock(return_value=lambda workflow: True)
 
             mock_random = Mock(spec=Random)
             mock_random.uniform = Mock(side_effect=[0.0, 0.0, 0.0, 1.0])
 
+
+
             patched_clock = SynchronizingClock()
 
             test_advice = {
-                ExampleWorkflow.method_that_targets_a_goal:
-                    missed_target(patched_clock, missed_target_distribution(mock_random, 2))
+                ExampleWorkflow.method_that_targets_a_goal: {
+                    workflow_actors_name_is('alice'):
+                        missed_target(patched_clock, missed_target_distribution(mock_random, 2))
+                }
             }
 
             pydysofu.fuzz_clazz(ExampleWorkflow, test_advice)
