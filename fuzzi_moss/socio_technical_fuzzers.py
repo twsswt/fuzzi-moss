@@ -9,11 +9,15 @@ from pydysofu.core_fuzzers import *
 from .probability_distributions import default_distracted_probability_mass_function
 
 
-def workflow_actors_name_is(logical_name):
+def workflow_actors_name_is(logical_name, fuzzer):
 
-    def _workflow_actors_name_is(workflow):
+    def _workflow_actors_name_is(steps, context):
 
-        return False if workflow.actor is None else workflow.actor.logical_name == logical_name
+        filtering_fuzzer = filter_context(
+            lambda workflow: False if workflow.actor is None else workflow.actor.logical_name == logical_name,
+            fuzzer)
+
+        return filtering_fuzzer(steps, context)
 
     return _workflow_actors_name_is
 

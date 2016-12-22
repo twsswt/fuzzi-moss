@@ -55,10 +55,11 @@ class SocioTechnicalFuzzersTestCase(unittest.TestCase):
             mock_random.uniform = Mock(side_effect=[0.0, 0.0, 0.0, 1.0])
 
             test_advice = {
-                ExampleWorkflow.method_that_targets_a_goal: {
-                    workflow_actors_name_is('Alice'):
+                ExampleWorkflow.method_that_targets_a_goal:
+                    workflow_actors_name_is(
+                        'Alice',
                         missed_target(mock_random, default_distracted_probability_mass_function(2))
-                }
+                    )
             }
 
             pydysofu.fuzz_clazz(ExampleWorkflow, test_advice)
