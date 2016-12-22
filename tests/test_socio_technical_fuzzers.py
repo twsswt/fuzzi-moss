@@ -9,7 +9,6 @@ from theatre_ag import Actor, SynchronizingClock
 import pydysofu
 
 from fuzzi_moss.socio_technical_fuzzers import *
-from fuzzi_moss.probability_distributions import *
 
 from example_workflow import ExampleWorkflow
 
@@ -56,9 +55,8 @@ class SocioTechnicalFuzzersTestCase(unittest.TestCase):
 
             test_advice = {
                 ExampleWorkflow.method_that_targets_a_goal:
-                    workflow_actors_name_is(
-                        'Alice',
-                        missed_target(mock_random, default_distracted_probability_mass_function(2))
+                    apply_fuzzing_when_workflow_actors_name_is(
+                        [('Alice', missed_target(mock_random, default_distracted_pmf(2)))]
                     )
             }
 

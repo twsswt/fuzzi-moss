@@ -6,20 +6,32 @@ core fuzzers library.
 
 from pydysofu.core_fuzzers import *
 
-from .probability_distributions import default_distracted_probability_mass_function
 
-
-def workflow_actors_name_is(logical_name, fuzzer):
+def apply_fuzzing_when_workflow_actors_name_is(name_fuzzer_pairings=list()):
 
     def _workflow_actors_name_is(steps, context):
 
-        filtering_fuzzer = filter_context(
-            lambda workflow: False if workflow.actor is None else workflow.actor.logical_name == logical_name,
-            fuzzer)
+        fuzz_filters = [
+            (lambda workflow: False if workflow.actor is None else workflow.actor.logical_name == nfp[0], nfp[1])
+            for nfp in name_fuzzer_pairings
+        ]
+
+        filtering_fuzzer = filter_context(fuzz_filters)
 
         return filtering_fuzzer(steps, context)
 
     return _workflow_actors_name_is
+
+
+def default_distracted_pmf(conscientiousness=1):
+    """
+    Realises a 2-point PMF (True, False) that takes a duration and probability as parameters.
+    """
+    def _default_distracted_probability_mass_function(duration, probability):
+        threshold = 1.0 / (duration + 1) ** (1.0 / conscientiousness)
+        return probability < threshold
+
+    return _default_distracted_probability_mass_function
 
 
 class IsDistracted(object):
@@ -31,12 +43,12 @@ class IsDistracted(object):
 
         self.start_tick = self.clock.current_tick
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self):
         duration = self.clock.current_tick - self.start_tick
         return self.probability_mass_function(duration, self.random.uniform(0.0, 1.0))
 
 
-def missed_target(random, probability_mass_function=default_distracted_probability_mass_function(2)):
+def missed_target(random, probability_mass_function=default_distracted_pmf(2)):
     """
     Creates a fuzzer that causes a workflow containing a while loop to be prematurely terminated before the condition
     in the reference function is satisfied.  The binary probability distribution for continuing work is a function of
@@ -70,6 +82,27 @@ def missed_target(random, probability_mass_function=default_distracted_probabili
         return fuzzer(steps, context)
 
     return _insufficient_effort
+
+
+def steps_to_remove_distribution(clock, random):
+
+    def _probability_distribution(max_steps):
+
+        probability = random.uniform(0.0, 1.0)
+
+        remaining_time = clock.max_ticks - clock.current_tick
+
+        n = 1
+
+        def threshold():
+            return (1.0 - 1.0 / (n + 1)) ** (1.0 / (remaining_time + 1))
+
+        while probability > threshold() and n <= max_steps:
+            n += 1
+
+        return n - 1
+
+    return _probability_distribution
 
 
 def incomplete_procedure(truncation_pd=lambda max_steps: 0):
