@@ -3,6 +3,8 @@ class ExampleWorkflow(object):
     An example workflow class containing functions that can be fuzzed for unit testing.
     """
 
+    is_workflow = True
+
     def __init__(self, environment):
         self.environment = environment
 

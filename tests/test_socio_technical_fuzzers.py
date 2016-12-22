@@ -4,7 +4,7 @@ from mock import Mock, PropertyMock, patch
 
 from random import Random
 
-from theatre_ag import SynchronizingClock
+from theatre_ag import Actor, SynchronizingClock
 
 import pydysofu
 
@@ -14,7 +14,7 @@ from fuzzi_moss.probability_distributions import *
 from example_workflow import ExampleWorkflow
 
 
-class FuzziMossWeaverTest(unittest.TestCase):
+class SocioTechnicalFuzzersTestCase(unittest.TestCase):
 
     def setUp(self):
         self.environment = list()
@@ -45,19 +45,19 @@ class FuzziMossWeaverTest(unittest.TestCase):
 
             current_tick_mock.side_effect = [1, 1, 2, 3, 4, 5, 6]
 
-            workflow_actors_name_is = Mock(return_value=lambda workflow: True)
+            patched_clock = SynchronizingClock()
+
+            self.target.actor = Mock(spec=Actor)
+            self.target.actor.logical_name = 'Alice'
+            self.target.actor.clock = patched_clock
 
             mock_random = Mock(spec=Random)
             mock_random.uniform = Mock(side_effect=[0.0, 0.0, 0.0, 1.0])
 
-
-
-            patched_clock = SynchronizingClock()
-
             test_advice = {
                 ExampleWorkflow.method_that_targets_a_goal: {
-                    workflow_actors_name_is('alice'):
-                        missed_target(patched_clock, missed_target_distribution(mock_random, 2))
+                    workflow_actors_name_is('Alice'):
+                        missed_target(mock_random, default_distracted_probability_mass_function(2))
                 }
             }
 

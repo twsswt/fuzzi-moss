@@ -8,7 +8,7 @@ from random import Random
 
 from theatre_ag import SynchronizingClock
 
-from fuzzi_moss.probability_distributions import steps_to_remove_distribution, missed_target_distribution
+from fuzzi_moss.probability_distributions import steps_to_remove_distribution, default_distracted_probability_mass_function
 
 
 def name_func(func, param_num, param):
@@ -55,14 +55,12 @@ def create_test_parameters_for_missed_target():
     ]
 
 
-class MissedTargetDistribution(unittest.TestCase):
+class MissedTargetDistributionTestCase(unittest.TestCase):
 
     @parameterized.expand(create_test_parameters_for_missed_target, testcase_func_doc=name_func)
     def test(self, duration, probability, expected, conscientiousness):
-        random_mock = Mock(spec=Random)
-        random_mock.uniform = Mock(side_effect=[probability])
 
-        result = missed_target_distribution(random_mock, conscientiousness)(duration)
+        result = default_distracted_probability_mass_function(conscientiousness)(duration, probability)
 
         self.assertEquals(expected, result)
 

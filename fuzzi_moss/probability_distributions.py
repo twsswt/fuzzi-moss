@@ -20,11 +20,15 @@ def steps_to_remove_distribution(clock, random):
     return _probability_distribution
 
 
-def missed_target_distribution(random, conscientiousness=1):
-
-    def _probability_distribution(duration):
-        probability = random.uniform(0.0, 1.0)
+def default_distracted_probability_mass_function(conscientiousness=1):
+    """
+    Realises a 2-point PMF (True, False) that takes a duration and probability as parameters.
+    """
+    def _default_distracted_probability_mass_function(duration, probability):
         threshold = 1.0 / (duration + 1) ** (1.0 / conscientiousness)
         return probability < threshold
 
-    return _probability_distribution
+    return _default_distracted_probability_mass_function
+
+
+
