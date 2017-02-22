@@ -48,13 +48,13 @@ class IsDistracted(object):
         return self.probability_mass_function(duration, self.random.uniform(0.0, 1.0))
 
 
-def missed_target(random, probability_mass_function=default_distracted_pmf(2)):
+def missed_target(random, pmf=default_distracted_pmf(2)):
     """
     Creates a fuzzer that causes a workflow containing a while loop to be prematurely terminated before the condition
     in the reference function is satisfied.  The binary probability distribution for continuing work is a function of
     the duration of the workflow, as measured by the supplied turn based clock.
     :param random: a random value source.
-    :param probability_mass_function: a function that accepts a duration and returns a probability threshold for an
+    :param pmf: a function that accepts a duration and returns a probability threshold for an
     actor to be distracted from a target.
     :return: the insufficient effort fuzz function.
     """
@@ -64,7 +64,7 @@ def missed_target(random, probability_mass_function=default_distracted_pmf(2)):
         break_insertion = \
             'if not self.is_distracted() : break'
 
-        context.is_distracted = IsDistracted(context.actor.clock, random, probability_mass_function)
+        context.is_distracted = IsDistracted(context.actor.clock, random, pmf)
 
         fuzzer = \
             recurse_into_nested_steps(
@@ -84,49 +84,46 @@ def missed_target(random, probability_mass_function=default_distracted_pmf(2)):
     return _insufficient_effort
 
 
-def steps_to_remove_distribution(clock, random):
+def default_incomplete_procedure_pmf(concentration=1.0):
 
-    def _probability_distribution(max_steps):
+    def _probability_distribution(max_steps, remaining_time, probability):
 
-        probability = random.uniform(0.0, 1.0)
+        adjusted_probability = probability ** ((remaining_time + 1.0) * concentration)
 
-        remaining_time = clock.max_ticks - clock.current_tick
-
-        n = 1
-
-        def threshold():
-            return (1.0 - 1.0 / (n + 1)) ** (1.0 / (remaining_time + 1))
-
-        while probability > threshold() and n <= max_steps:
-            n += 1
-
-        return n - 1
+        if adjusted_probability == 1.0:
+            return max_steps
+        else:
+            n = int(1.0 / (1.0 - adjusted_probability) - 1)
+            return min(max_steps, n)
 
     return _probability_distribution
 
 
-def incomplete_procedure(truncation_pd=lambda max_steps: 0):
+def incomplete_procedure(random, pmf=default_incomplete_procedure_pmf()):
     """
     Creates a fuzzer that causes a workflow to be truncated.  The provided discrete probability distribution defines
     the number of steps to be removed. By default, the distribution removes no steps.
-    :param truncation_pd:  A function that accepts a maximum number of steps and returns an
-    integer number of steps to be removed.
+    :param random : a random value source for generating a uniform random distribution.
+    :param pmf:  A function that accepts a maximum number of steps, a remaining time and a
+    probability and returns an integer number of steps to be removed.
     :return: the underlying fuzzer.
     """
 
-    insertion = 'import fuzzi_moss.socio_technical_fuzzers\n'
-
     def _incomplete_procedure(steps, context):
-        n = truncation_pd(len(steps))
+        clock = context.actor.clock
+        remaining_time = clock.max_ticks - clock.current_tick
+
+        probability = random.uniform(0.0, 0.9999)
+
+        n = pmf(len(steps), remaining_time, probability)
 
         fuzzer = in_sequence(
             [
-                insert_steps(0, insertion),
                 recurse_into_nested_steps(
-                    target_structures={ast.For, ast.TryExcept},
+                    target_structures={ast.While, ast.For, ast.TryExcept},
                     fuzzer=filter_steps(
-                        exclude_control_structures(),
-                        remove_last_steps(n)
+                        choose_last_steps(n, False),
+                        replace_steps_with(replacement='self.actor.idling.idle()')
                     )
                 )
             ]
