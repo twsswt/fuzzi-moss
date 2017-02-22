@@ -17,7 +17,9 @@ class SocioTechnicalFuzzersTestCase(unittest.TestCase):
 
     def setUp(self):
         self.environment = list()
-        self.target = ExampleWorkflow(self.environment)
+        self.example_workflow = ExampleWorkflow(self.environment)
+        self.example_workflow.actor = Mock(spec=Actor)
+        self.example_workflow.actor.logical_name = 'Alice'
 
     def test_truncated_workflow(self):
         with patch('theatre_ag.SynchronizingClock.current_tick', new_callable=PropertyMock) as current_tick_mock:
@@ -27,14 +29,15 @@ class SocioTechnicalFuzzersTestCase(unittest.TestCase):
             mock_random.uniform = Mock(side_effect=[.6])
 
             patched_clock = SynchronizingClock(1)
+            self.example_workflow.actor.clock = patched_clock
 
             test_advice = {
                 ExampleWorkflow.method_for_fuzzing:
-                    incomplete_procedure(steps_to_remove_distribution(patched_clock, mock_random))
+                    incomplete_procedure(mock_random, default_incomplete_procedure_pmf())
             }
             pydysofu.fuzz_clazz(ExampleWorkflow, test_advice)
 
-            self.target.method_for_fuzzing()
+            self.example_workflow.method_for_fuzzing()
             self.assertEquals([1, 2], self.environment)
 
     def test_missed_target(self):
@@ -45,10 +48,7 @@ class SocioTechnicalFuzzersTestCase(unittest.TestCase):
             current_tick_mock.side_effect = [1, 1, 2, 3, 4, 5, 6]
 
             patched_clock = SynchronizingClock()
-
-            self.target.actor = Mock(spec=Actor)
-            self.target.actor.logical_name = 'Alice'
-            self.target.actor.clock = patched_clock
+            self.example_workflow.actor.clock = patched_clock
 
             mock_random = Mock(spec=Random)
             mock_random.uniform = Mock(side_effect=[0.0, 0.0, 0.0, 1.0])
@@ -62,7 +62,7 @@ class SocioTechnicalFuzzersTestCase(unittest.TestCase):
 
             pydysofu.fuzz_clazz(ExampleWorkflow, test_advice)
 
-            self.target.method_that_targets_a_goal()
+            self.example_workflow.method_that_targets_a_goal()
 
             self.assertEquals(3, len(self.environment))
 
