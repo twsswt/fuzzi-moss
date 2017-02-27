@@ -4,13 +4,16 @@ core fuzzers library.
 @author twsswt
 """
 
+import ast
 
 import sys
 
 from threading import Lock
 
 from pydysofu.core_fuzzers import *
+from pydysofu.fuzz_weaver import get_reference_syntax_tree
 
+# Logging Machinery
 
 _lines_removed_lock = Lock()
 lines_removed_counters = dict()
@@ -34,6 +37,28 @@ def lines_removed_count(workflow=None):
         else lines_removed_counters.items()
 
     return sum(map(lambda t: t[1], filtered_values))
+
+
+def removable_lines_count(function):
+    func = function if inspect.isfunction(function) else function.im_func
+
+    _syntax_tree = get_reference_syntax_tree(func)
+
+    def _recurse_count_steps_available_for_removal(steps):
+        result = 0
+        for step in steps:
+            result += 1
+            if type(step) in {ast.For, ast.While}:
+                result += _recurse_count_steps_available_for_removal(step.body)
+            elif type(step) in {ast.If}:
+                result += _recurse_count_steps_available_for_removal(step.body)
+                result += _recurse_count_steps_available_for_removal(step.orelse)
+            elif type(step) in {ast.TryExcept}:
+                result += _recurse_count_steps_available_for_removal(step.body)
+                for handler in step.handlers:
+                    result += _recurse_count_steps_available_for_removal(handler.body)
+        return result
+    return _recurse_count_steps_available_for_removal(_syntax_tree.body[0].body)
 
 
 def apply_fuzzing_when_workflow_actors_name_is(name_fuzzer_pairings=list()):
