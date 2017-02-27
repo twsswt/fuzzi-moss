@@ -5,12 +5,14 @@ core fuzzers library.
 """
 
 import ast
-
+import inspect
 import sys
 
 from threading import Lock
 
-from pydysofu.core_fuzzers import *
+from pydysofu.core_fuzzers import choose_last_steps, filter_context, filter_steps, recurse_into_nested_steps, \
+    replace_steps_with, in_sequence, include_control_structures, insert_steps
+
 from pydysofu.fuzz_weaver import get_reference_syntax_tree
 
 # Logging Machinery

@@ -26,8 +26,8 @@ class TestStepsToRemoveDistribution(unittest.TestCase):
     @parameterized.expand(create_test_parameters_for_steps_to_remove_distribution, testcase_func_name=name_func)
     def test(self, remaining_time, probability, length_of_steps, expected_n):
 
-        n = default_incomplete_procedure_pmf()(length_of_steps, remaining_time, probability)
-
+        n = default_incomplete_procedure_pmf()(remaining_time, probability)
+        n = min (n, length_of_steps)
         self.assertEquals(expected_n, n)
 
 
