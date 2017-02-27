@@ -61,7 +61,12 @@ def removable_lines_count(function):
     return _recurse_count_steps_available_for_removal(_syntax_tree.body[0].body)
 
 
+# Fuzzers and Filters
+
 def apply_fuzzing_when_workflow_actors_name_is(name_fuzzer_pairings=list()):
+    """
+    A filtering fuzzer for applying fuzzers selectively based on workflow actor names.
+    """
 
     def _workflow_actors_name_is(steps, context):
 
