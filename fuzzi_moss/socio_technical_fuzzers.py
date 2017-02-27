@@ -4,7 +4,36 @@ core fuzzers library.
 @author twsswt
 """
 
+
+import sys
+
+from threading import Lock
+
 from pydysofu.core_fuzzers import *
+
+
+_lines_removed_lock = Lock()
+lines_removed_counters = dict()
+
+
+def _update_lines_removed_counter(workflow, n):
+    global _lines_removed_lock
+    _lines_removed_lock.acquire()
+    lines_removed_counters[workflow] = lines_removed_counters.get(workflow, 0) + n
+    _lines_removed_lock.release()
+
+
+def reset_lines_removed_counters():
+    global lines_removed_counters
+    lines_removed_counters = dict()
+
+
+def lines_removed_count(workflow=None):
+    filtered_values = \
+        filter(lambda t: t[0] == workflow, lines_removed_counters.items()) if workflow is not None \
+        else lines_removed_counters.items()
+
+    return sum(map(lambda t: t[1], filtered_values))
 
 
 def apply_fuzzing_when_workflow_actors_name_is(name_fuzzer_pairings=list()):
@@ -86,15 +115,11 @@ def missed_target(random, pmf=default_distracted_pmf(2)):
 
 def default_incomplete_procedure_pmf(concentration=1.0):
 
-    def _probability_distribution(max_steps, remaining_time, probability):
+    def _probability_distribution(remaining_time, probability):
 
         adjusted_probability = probability ** ((remaining_time + 1.0) * concentration)
 
-        if adjusted_probability == 1.0:
-            return max_steps
-        else:
-            n = int(1.0 / (1.0 - adjusted_probability) - 1)
-            return min(max_steps, n)
+        return sys.maxint if adjusted_probability == 1.0 else int(1.0 / (1.0 - adjusted_probability) - 1)
 
     return _probability_distribution
 
@@ -115,20 +140,25 @@ def incomplete_procedure(random, pmf=default_incomplete_procedure_pmf()):
 
         probability = random.uniform(0.0, 0.9999)
 
-        n = pmf(len(steps), remaining_time, probability)
+        n = pmf(remaining_time, probability)
+
+        choose_last_steps_fuzzer = choose_last_steps(n, False)
 
         fuzzer = in_sequence(
             [
                 recurse_into_nested_steps(
                     target_structures={ast.While, ast.For, ast.TryExcept},
                     fuzzer=filter_steps(
-                        choose_last_steps(n, False),
+                        choose_last_steps_fuzzer,
                         replace_steps_with(replacement='self.actor.idling.idle()')
                     )
                 )
             ]
         )
-        return fuzzer(steps, context)
+
+        result = fuzzer(steps, context)
+        _update_lines_removed_counter(context.__class__, n - choose_last_steps_fuzzer.n)
+        return result
 
     return _incomplete_procedure
 
