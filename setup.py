@@ -13,7 +13,8 @@ setup(
     author='Tom Wallis, Tim Storer',
     author_email='twallisgm@gmail.com',
     description='Fuzzing for Modelling Variance in Socio-technical Systems',
-    setup_requires=['nose', 'pydysofu', 'theatre_ag'],
+    setup_requires=['pydysofu', 'theatre_ag'],
+    install_requires=['pydysofu', 'theatre_ag'],
     test_suite='nose.collector',
     tests_require=['mock', 'nose', 'nose_parameterized']
 )
