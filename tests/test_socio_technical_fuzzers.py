@@ -4,7 +4,7 @@ from mock import Mock, PropertyMock, patch
 
 from random import Random
 
-from theatre_ag import Actor, SynchronizingClock
+from theatre_ag import Actor, SynchronizingClock, Idling
 
 import pydysofu
 
@@ -20,6 +20,8 @@ class SocioTechnicalFuzzersTestCase(unittest.TestCase):
         self.example_workflow = ExampleWorkflow(self.environment)
         self.example_workflow.actor = Mock(spec=Actor)
         self.example_workflow.actor.logical_name = 'Alice'
+
+        self.example_workflow.actor.idling = Mock(spec=Idling)
 
     def test_truncated_workflow(self):
         with patch('theatre_ag.SynchronizingClock.current_tick', new_callable=PropertyMock) as current_tick_mock:
