@@ -1,4 +1,6 @@
-# Fuzzi Moss - Code Fuzzing for Simulating Variance in Models of Socio-technical Systems
+# Fuzzi Moss
+
+A code fuzzing library for simulating variance in models of socio-technical systems, based on the PyDySoFu library.
 
 ## Contributors
 
